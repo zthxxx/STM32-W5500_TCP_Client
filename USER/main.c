@@ -1,7 +1,7 @@
 /***************************************************************************************
  * 工程名  ：W5500模块－客户端模式例程
  * 描述    ：W5500的端口0工作在客户端模式:主动与《TCP&UDP测试工具》上创建的服务端连接,
- *			 并且以500ms的时间间隔定时给服务端发送字符串"\r\nWelcome To YiXinElec!\r\n",同时将接
+ *			 并且以500ms的时间间隔定时给服务端发送字符串"\r\nWelcome !\r\n",同时将接
  *			 收到服务端发来的数据回发给服务端。
  * 实验平台：用户STM32开发板 + YIXIN_W5500以太网(TCP/IP)模块
  * 硬件连接：  PC5 -> W5500_RST   
@@ -12,21 +12,13 @@
  *             PA7 -> W5500_MOSI    
  * 库版本  ：ST_v3.5
 
- * 淘宝    ：http://yixindianzikeji.taobao.com/
 ***************************************************************************************/
 
-/*例程网络参数*/
-//网关：192.168.1.1
-//掩码:	255.255.255.0
-//物理地址：0C 29 AB 7C 00 01
-//本机IP地址:192.168.1.199
-//端口0的端口号：5000
-//端口0的目的IP地址：192.168.1.100
-//端口0的目的端口号：6000
 
 #include "stm32f10x.h"		
 #include "W5500.h"			
 #include <string.h>
+#include <stdio.h>
 
 void RCC_Configuration(void);		//设置系统时钟为72MHZ(这个可以根据需要改)
 void NVIC_Configuration(void);		//STM32中断向量表配配置
@@ -50,52 +42,6 @@ void W5500_Initialization(void)
 	W5500_Init();		//初始化W5500寄存器函数
 	Detect_Gateway();	//检查网关服务器 
 	Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
-}
-
-/*******************************************************************************
-* 函数名  : Load_Net_Parameters
-* 描述    : 装载网络参数
-* 输入    : 无
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 网关、掩码、物理地址、本机IP地址、端口号、目的IP地址、目的端口号、端口工作模式
-*******************************************************************************/
-void Load_Net_Parameters(void)
-{
-	Gateway_IP[0] = 192;//加载网关参数
-	Gateway_IP[1] = 168;
-	Gateway_IP[2] = 169;
-	Gateway_IP[3] = 1;
-
-	Sub_Mask[0]=255;//加载子网掩码
-	Sub_Mask[1]=255;
-	Sub_Mask[2]=255;
-	Sub_Mask[3]=0;
-
-	Phy_Addr[0]=0x0c;//加载物理地址
-	Phy_Addr[1]=0x29;
-	Phy_Addr[2]=0xab;
-	Phy_Addr[3]=0x7c;
-	Phy_Addr[4]=0x00;
-	Phy_Addr[5]=0x01;
-
-	IP_Addr[0]=192;//加载本机IP地址
-	IP_Addr[1]=168;
-	IP_Addr[2]=169;
-	IP_Addr[3]=104;
-
-	S0_Port[0] = 0x13;//加载端口0的端口号5000 
-	S0_Port[1] = 0x88;
-
-	S0_DIP[0]=192;//加载端口0的目的IP地址
-	S0_DIP[1]=168;
-	S0_DIP[2]=1;
-	S0_DIP[3]=105;
-	
-	S0_DPort[0] = 0x7B;//加载端口0的目的端口号0x7B17 31511
-	S0_DPort[1] = 0x17;
-
-	S0_Mode=TCP_CLIENT;//加载端口0的工作模式,TCP客户端模式
 }
 
 /*******************************************************************************
@@ -165,9 +111,11 @@ void Process_Socket_Data(SOCKET s)
 int main(void)
 {
 	System_Initialization();	//STM32系统初始化函数(初始化STM32时钟及外设)
-	Load_Net_Parameters();		//装载网络参数	
+//    printf("System start.");
 	W5500_Hardware_Reset();		//硬件复位W5500
+//    printf("W5500 reset.");
 	W5500_Initialization();		//W5500初始货配置
+//    printf("W5500 Init.");
 	while (1)
 	{
 		W5500_Socket_Set();//W5500端口初始化配置
@@ -181,7 +129,7 @@ int main(void)
 			S0_Data&=~S_RECEIVE;
 			Process_Socket_Data(0);//W5500接收并发送接收到的数据
 		}
-		else if(W5500_Send_Delay_Counter >= 500)//定时发送字符串
+		else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
 		{
 			if(S0_State == (S_INIT|S_CONN))
 			{
@@ -189,7 +137,7 @@ int main(void)
 				memcpy(Tx_Buffer, "\r\nWelcome To YiXinElec!\r\n", 23);	
 				Write_SOCK_Data_Buffer(0, Tx_Buffer, 23);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
 			}
-			W5500_Send_Delay_Counter=0;
+			W5500_Send_Delay_Counter=500;
 		}
 	}
 }
@@ -321,8 +269,8 @@ void TIM2_IRQHandler(void)
 	if(TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
 	{
 		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-		Timer2_Counter++;
-		W5500_Send_Delay_Counter++;
+		if(Timer2_Counter > 0 )Timer2_Counter--;
+		if(W5500_Send_Delay_Counter > 0)W5500_Send_Delay_Counter--;
 	}
 }
 
@@ -353,6 +301,6 @@ void System_Initialization(void)
 *******************************************************************************/
 void Delay(unsigned int d)
 {
-	Timer2_Counter=0; 
-	while(Timer2_Counter < d);
+	Timer2_Counter=d; 
+	while(Timer2_Counter != 0);
 }

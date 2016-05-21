@@ -11,23 +11,23 @@
 #include "W5500.h"	
 
 /***************----- 网络参数变量定义 -----***************/
-unsigned char Gateway_IP[4];//网关IP地址 
-unsigned char Sub_Mask[4];	//子网掩码 
-unsigned char Phy_Addr[6];	//物理地址(MAC) 
-unsigned char IP_Addr[4];	//本机IP地址 
+unsigned char Gateway_IP[4]={192,168,169,1};//网关IP地址 
+unsigned char Sub_Mask[4]={255,255,255,0};	//子网掩码 
+unsigned char Phy_Addr[6]={0x0C,0x29,0xAB,0x7C,0x00,0x01};	//物理地址(MAC) 
+unsigned char IP_Addr[4]={192,168,169,104};	//本机IP地址 
 
-unsigned char S0_Port[2];	//端口0的端口号(5000) 
-unsigned char S0_DIP[4];	//端口0目的IP地址 
-unsigned char S0_DPort[2];	//端口0目的端口号(6000) 
+unsigned char S0_Port[2]={0x13,0x88};	//端口0的端口号(0x1388 5000) 
+unsigned char S0_DIP[4]={192,168,1,105};	//端口0目的IP地址 
+unsigned char S0_DPort[2]={0x7B,0x17};	//端口0目的端口号(0x7B17 31511) 
 
-unsigned char UDP_DIPR[4];	//UDP(广播)模式,目的主机IP地址
-unsigned char UDP_DPORT[2];	//UDP(广播)模式,目的主机端口号
+unsigned char UDP_DIPR[4]={192,168,1,105};	//UDP(广播)模式,目的主机IP地址
+unsigned char UDP_DPORT[2]={0x7B,0x17};	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
-unsigned char S0_Mode =3;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
 #define TCP_SERVER	0x00	//TCP服务器模式
 #define TCP_CLIENT	0x01	//TCP客户端模式 
 #define UDP_MODE	0x02	//UDP(广播)模式 
+unsigned char S0_Mode =TCP_CLIENT;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
 
 /***************----- 端口的运行状态 -----***************/
 unsigned char S0_State =0;	//端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
@@ -187,7 +187,7 @@ void SPI1_Send_Byte(unsigned char dat)
 *******************************************************************************/
 void SPI1_Send_Short(unsigned short dat)
 {
-	SPI1_Send_Byte(dat/256);//写数据高位
+	SPI1_Send_Byte(dat>>8);//写数据高位
 	SPI1_Send_Byte(dat);	//写数据低位
 }
 
@@ -386,7 +386,7 @@ unsigned short Read_W5500_SOCK_2Byte(SOCKET s, unsigned short reg)
 	SPI1_Send_Byte(0x00);//发送一个哑数据
 	i=SPI_I2S_ReceiveData(SPI1);//读取高位数据
 	SPI1_Send_Byte(0x00);//发送一个哑数据
-	i*=256;
+	i = i<<8;
 	i+=SPI_I2S_ReceiveData(SPI1);//读取低位数据
 
 	GPIO_SetBits(W5500_SCS_PORT, W5500_SCS);//置W5500的SCS为高电平
@@ -483,7 +483,7 @@ void Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short siz
 	if((Read_W5500_SOCK_1Byte(s,Sn_MR)&0x0f) != SOCK_UDP)//如果Socket打开失败
 	{		
 		Write_W5500_SOCK_4Byte(s, Sn_DIPR, UDP_DIPR);//设置目的主机IP  		
-		Write_W5500_SOCK_2Byte(s, Sn_DPORTR, UDP_DPORT[0]*256+UDP_DPORT[1]);//设置目的主机端口号				
+		Write_W5500_SOCK_2Byte(s, Sn_DPORTR, ((uint16_t)UDP_DPORT[0]<<8)+UDP_DPORT[1]);//设置目的主机端口号				
 	}
 
 	offset=Read_W5500_SOCK_2Byte(s,Sn_TX_WR);
@@ -666,9 +666,9 @@ void Socket_Init(SOCKET s)
 	{
 		case 0:
 			//设置端口0的端口号
-			Write_W5500_SOCK_2Byte(0, Sn_PORT, S0_Port[0]*256+S0_Port[1]);
+			Write_W5500_SOCK_2Byte(0, Sn_PORT, ((uint16_t)S0_Port[0] << 8)+S0_Port[1]);
 			//设置端口0目的(远程)端口号
-			Write_W5500_SOCK_2Byte(0, Sn_DPORTR, S0_DPort[0]*256+S0_DPort[1]);
+			Write_W5500_SOCK_2Byte(0, Sn_DPORTR,((uint16_t)S0_DPort[0] << 8)+S0_DPort[1]);
 			//设置端口0目的(远程)IP地址
 			Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_DIP);			
 			
@@ -796,53 +796,54 @@ unsigned char Socket_UDP(SOCKET s)
 void W5500_Interrupt_Process(void)
 {
 	unsigned char i,j;
+    while(1)
+    {
+        W5500_Interrupt=0;//清零中断标志
+        i = Read_W5500_1Byte(IR);//读取中断标志寄存器
+        Write_W5500_1Byte(IR, (i&0xf0));//回写清除中断标志
 
-IntDispose:
-	W5500_Interrupt=0;//清零中断标志
-	i = Read_W5500_1Byte(IR);//读取中断标志寄存器
-	Write_W5500_1Byte(IR, (i&0xf0));//回写清除中断标志
+        if((i & CONFLICT) == CONFLICT)//IP地址冲突异常处理
+        {
+             //自己添加代码
+        }
 
-	if((i & CONFLICT) == CONFLICT)//IP地址冲突异常处理
-	{
-		 //自己添加代码
-	}
+        if((i & UNREACH) == UNREACH)//UDP模式下地址无法到达异常处理
+        {
+            //自己添加代码
+        }
 
-	if((i & UNREACH) == UNREACH)//UDP模式下地址无法到达异常处理
-	{
-		//自己添加代码
-	}
+        i=Read_W5500_1Byte(SIR);//读取端口中断标志寄存器	
+        if((i & S0_INT) == S0_INT)//Socket0事件处理 
+        {
+            j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
+            Write_W5500_SOCK_1Byte(0,Sn_IR,j);
+            if(j&IR_CON)//在TCP模式下,Socket0成功连接 
+            {
+                S0_State|=S_CONN;//网络连接状态0x02,端口完成连接，可以正常传输数据
+            }
+            if(j&IR_DISCON)//在TCP模式下Socket断开连接处理
+            {
+                Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);//关闭端口,等待重新打开连接 
+                Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
+                S0_State=0;//网络连接状态0x00,端口连接失败
+            }
+            if(j&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
+            {
+                S0_Data|=S_TRANSMITOK;//端口发送一个数据包完成 
+            }
+            if(j&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
+            {
+                S0_Data|=S_RECEIVE;//端口接收到一个数据包
+            }
+            if(j&IR_TIMEOUT)//Socket连接或数据传输超时处理 
+            {
+                Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);// 关闭端口,等待重新打开连接 
+                S0_State=0;//网络连接状态0x00,端口连接失败
+            }
+        }
 
-	i=Read_W5500_1Byte(SIR);//读取端口中断标志寄存器	
-	if((i & S0_INT) == S0_INT)//Socket0事件处理 
-	{
-		j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
-		Write_W5500_SOCK_1Byte(0,Sn_IR,j);
-		if(j&IR_CON)//在TCP模式下,Socket0成功连接 
-		{
-			S0_State|=S_CONN;//网络连接状态0x02,端口完成连接，可以正常传输数据
-		}
-		if(j&IR_DISCON)//在TCP模式下Socket断开连接处理
-		{
-			Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);//关闭端口,等待重新打开连接 
-			Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
-			S0_State=0;//网络连接状态0x00,端口连接失败
-		}
-		if(j&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
-		{
-			S0_Data|=S_TRANSMITOK;//端口发送一个数据包完成 
-		}
-		if(j&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
-		{
-			S0_Data|=S_RECEIVE;//端口接收到一个数据包
-		}
-		if(j&IR_TIMEOUT)//Socket连接或数据传输超时处理 
-		{
-			Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);// 关闭端口,等待重新打开连接 
-			S0_State=0;//网络连接状态0x00,端口连接失败
-		}
-	}
-
-	if(Read_W5500_1Byte(SIR) != 0) 
-		goto IntDispose;
+        if(Read_W5500_1Byte(SIR) == 0) 
+            break;
+    }
 }
 
