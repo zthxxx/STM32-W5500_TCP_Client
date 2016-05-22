@@ -363,7 +363,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>.\USER;.\CMSIS;.\LIB\inc;.\USER\NVIC;.\USER\USART;.\USER\SPI</IncludePath>
+              <IncludePath>.\USER;.\CMSIS;.\LIB\inc;.\USER\NVIC;.\USER\USART;.\USER\SPI;.\USER\FIFO</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -580,6 +580,21 @@
               <FileName>startup_stm32f10x_md.s</FileName>
               <FileType>2</FileType>
               <FilePath>.\CMSIS\startup\arm\startup_stm32f10x_md.s</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>FIFO</GroupName>
+          <Files>
+            <File>
+              <FileName>FIFO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\FIFO\FIFO.c</FilePath>
+            </File>
+            <File>
+              <FileName>Uint8PacketQueueManger.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\FIFO\Uint8PacketQueueManger.c</FilePath>
             </File>
           </Files>
         </Group>

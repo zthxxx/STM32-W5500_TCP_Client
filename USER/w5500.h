@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "SPI.h"
+#include "Uint8PacketQueueManger.h"
 
 /***************** Common Register *****************/
 #define MR		0x0000
@@ -272,7 +273,9 @@ typedef struct Socket
     uint16_t target_Port;
     uint8_t socket_Mode;//端口的运行模, 00H:TCP服务器模式, 01H:TCP客户端模式, 02H:UDP(广播)模式
     uint8_t port_State;//端口状态记录, 01H:端口完成初始化, 02H端口完成连接(可以正常传输数据) 
-    uint8_t send_receive_State;//端口接收和发送数据的状态, 01H:端口接收到数据, 02H:端口发送数据完成 
+    uint8_t send_receive_State;//端口接收和发送数据的状态, 01H:端口接收到数据, 02H:端口发送数据完成
+    Uint8PacketQueue* send_Packet_Queue_Handle;
+    bool packet_Sendding;
 } Socket;
 
 extern Socket socket_0;
@@ -289,13 +292,14 @@ uint8_t Socket_Connect(Socket* socket);//设置指定Socket(0~7)为客户端与远程服务器
 uint8_t Socket_Listen(Socket* socket);//设置指定Socket(0~7)作为服务器等待远程主机的连接
 uint8_t Socket_UDP(Socket* socket);//设置指定Socket(0~7)为UDP模式
 uint16_t Read_SOCK_Data_Buffer(Socket* socket, uint8_t *dat_ptr);//指定Socket(0~7)接收数据处理
-void W5500_Send_Socket_Data(Socket* socket, uint8_t *dat_ptr, uint16_t size); //指定Socket(0~7)发送数据处理
-void W5500_Process_Socket_Data(Socket* socket);//W5500接收并处理接收到的数据
+void W5500_Send_Socket_Data(Socket* socket); //指定Socket(0~7)发送数据处理
+void W5500_Socket_Receive_Process(Socket* socket);//W5500接收并处理接收到的数据
 
 void W5500_Init(void);//初始化W5500寄存器函数
 bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
 void W5500_Interrupt_Process(void);//W5500中断处理程序框架
-
+void Free_W5500_PacketNoedItem(Uint8PacketNode* uint8PacketNodePointer);
+void W5500_Push_Socket0_SendDataIntoFIFO(uint8_t *Socket_SendBuff, uint16_t DataSendLength);//对内封装，提供对外push进FIFO的接口
 #endif
 
 

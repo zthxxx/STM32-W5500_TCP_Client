@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include "bsp_usart1.h"
 #include "NVIC_CONFIG.H"
+#include "FIFO.h"
+#include "Uint8PacketQueueManger.h"
 
 void RCC_Configuration(void);		//设置系统时钟为72MHZ(这个可以根据需要改)
 void NVIC_Configuration(void);		//STM32中断向量表配配置
