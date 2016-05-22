@@ -489,20 +489,19 @@ void W5500_Hardware_Reset(void)
 *******************************************************************************/
 void W5500_Init(void)
 {
-	u8 i=0;
-    
+    uint8_t socket_index;
+    SOCKET socket = 0;
+    printf("W5500 reset.\r\n");
 	W5500_GPIO_Configuration();	//W5500 GPIO初始化配置
     W5500_NVIC_Configuration(); //W5500 中断配置
     W5500_SPI_Configuration();  //W5500 SPI初始化配置
     W5500_Hardware_Reset();		//硬件复位W5500
-    
+    printf("W5500 Ethernet link\r\n");
 	Write_W5500_1Byte(MR, RST);//软件复位W5500,置1有效,复位后自动清0
 	W5500_Delay_ms(10);//延时10ms,自己定义该函数
-
 	//设置网关(Gateway)的IP地址,Gateway_IP为4字节uint8_t数组,自己定义 
 	//使用网关可以使通信突破子网的局限，通过网关可以访问到其它子网或进入Internet
 	Write_W5500_nByte(GAR, Gateway_IP, 4);
-			
 	//设置子网掩码(MASK)值,SUB_MASK为4字节uint8_t数组,自己定义
 	//子网掩码用于子网运算
 	Write_W5500_nByte(SUBR,Sub_Mask,4);		
@@ -517,10 +516,10 @@ void W5500_Init(void)
 	Write_W5500_nByte(SIPR,IP_Addr,4);		
 	
 	//设置发送缓冲区和接收缓冲区的大小，参考W5500数据手册
-	for(i=0;i<8;i++)
+	for(socket_index=0;socket_index<8;socket_index++)
 	{
-		Write_W5500_SOCK_1Byte(i,Sn_RXBUF_SIZE, 0x02);//Socket Rx memory size=2k
-		Write_W5500_SOCK_1Byte(i,Sn_TXBUF_SIZE, 0x02);//Socket Tx mempry size=2k
+		Write_W5500_SOCK_1Byte(socket_index,Sn_RXBUF_SIZE, 0x02);//Socket Rx memory size=2k
+		Write_W5500_SOCK_1Byte(socket_index,Sn_TXBUF_SIZE, 0x02);//Socket Tx mempry size=2k
 	}
 
 	//设置重试时间，默认为2000(200ms) 
@@ -534,11 +533,15 @@ void W5500_Init(void)
 	//启动中断，参考W5500数据手册确定自己需要的中断类型
 	//IMR_CONFLICT是IP地址冲突异常中断,IMR_UNREACH是UDP通信时，地址无法到达的异常中断
 	//其它是Socket事件中断，根据需要添加
+    printf("W5500 IRQn init.\r\n");
 	Write_W5500_1Byte(IMR,IM_IR7 | IM_IR6);
 	Write_W5500_1Byte(SIMR,S0_IMR);
-	Write_W5500_SOCK_1Byte(0, Sn_IMR, IMR_SENDOK | IMR_TIMEOUT | IMR_RECV | IMR_DISCON | IMR_CON);
-    Detect_Gateway();	//检查网关服务器 
-	Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
+	Write_W5500_SOCK_1Byte(socket, Sn_IMR, IMR_SENDOK | IMR_TIMEOUT | IMR_RECV | IMR_DISCON | IMR_CON);
+    printf("W5500 detect Gateway.\r\n");
+    Detect_Gateway(socket);	//检查网关服务器
+    printf("W5500 socket init.\r\n");
+	Socket_Init(socket);		//指定Socket(0~7)初始化,初始化端口0
+    printf("W5500 Inited.\r\n");
 }
 
 /*******************************************************************************
@@ -549,7 +552,7 @@ void W5500_Init(void)
 * 返回值  : 成功返回TRUE(0xFF),失败返回FALSE(0x00)
 * 说明    : 无
 *******************************************************************************/
-uint8_t Detect_Gateway(void)
+uint8_t Detect_Gateway(SOCKET socket)
 {
 	uint8_t ip_adde[4];
 	ip_adde[0]=IP_Addr[0]+1;
@@ -558,33 +561,33 @@ uint8_t Detect_Gateway(void)
 	ip_adde[3]=IP_Addr[3]+1;
 
 	//检查网关及获取网关的物理地址
-	Write_W5500_SOCK_4Byte(0,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
-	Write_W5500_SOCK_1Byte(0,Sn_MR,MR_TCP);//设置socket为TCP模式
-	Write_W5500_SOCK_1Byte(0,Sn_CR,OPEN);//打开Socket	
+	Write_W5500_SOCK_4Byte(socket,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
+	Write_W5500_SOCK_1Byte(socket,Sn_MR,MR_TCP);//设置socket为TCP模式
+	Write_W5500_SOCK_1Byte(socket,Sn_CR,OPEN);//打开Socket	
 	W5500_Delay_ms(5);//延时5ms 	
 	
-	if(Read_W5500_SOCK_1Byte(0,Sn_SR) != SOCK_INIT)//如果socket打开失败
+	if(Read_W5500_SOCK_1Byte(socket,Sn_SR) != SOCK_INIT)//如果socket打开失败
 	{
-		Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);//打开不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}
 
-	Write_W5500_SOCK_1Byte(0,Sn_CR,CONNECT);//设置Socket为Connect模式						
+	Write_W5500_SOCK_1Byte(socket,Sn_CR,CONNECT);//设置Socket为Connect模式						
 
 	do
 	{
 		u8 j=0;
-		j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
+		j=Read_W5500_SOCK_1Byte(socket,Sn_IR);//读取Socket0中断标志寄存器
 		if(j!=0)
-		Write_W5500_SOCK_1Byte(0,Sn_IR,j);
+		Write_W5500_SOCK_1Byte(socket,Sn_IR,j);
 		W5500_Delay_ms(5);//延时5ms 
 		if((j&IR_TIMEOUT) == IR_TIMEOUT)
 		{
 			return FALSE;	
 		}
-		else if(Read_W5500_SOCK_1Byte(0,Sn_DHAR) != 0xff)
+		else if(Read_W5500_SOCK_1Byte(socket,Sn_DHAR) != 0xff)
 		{
-			Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);//关闭Socket
+			Write_W5500_SOCK_1Byte(socket,Sn_CR,CLOSE);//关闭Socket
 			return TRUE;							
 		}
 	}while(1);

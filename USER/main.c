@@ -174,9 +174,7 @@ void System_Initialization(void)
     USART1_Config(115200);
     printf("System start.\r\n");
 	Timer2_Init_Config();		//Timer2初始化配置
-    printf("W5500 reset.\r\n");
     W5500_Init();
-    printf("W5500 Init.\r\n");
 }
 
 /******************************************************************************** 函数名  : Delay

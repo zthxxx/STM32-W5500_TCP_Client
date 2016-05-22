@@ -4,6 +4,7 @@
 #include "NVIC_CONFIG.H"
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "SPI.h"
 
 /***************** Common Register *****************/
@@ -283,9 +284,8 @@ void Write_W5500_SOCK_4Byte(SOCKET s, uint16_t reg, uint8_t *dat_ptr);
 uint8_t Read_W5500_SOCK_1Byte(SOCKET s, uint16_t reg);
 uint16_t Read_W5500_SOCK_2Byte(SOCKET s, uint16_t reg);
 uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);
+uint8_t Detect_Gateway(SOCKET socket);//检查网关服务器
 
-
-uint8_t Detect_Gateway(void);//检查网关服务器
 void W5500_Init(void);//初始化W5500寄存器函数
 bool W5500_Socket_Set_Default(void);//Socket0设置为默认状态
 bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
