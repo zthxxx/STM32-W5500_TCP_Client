@@ -363,7 +363,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>.\USER;.\CMSIS;.\LIB\inc;.\USER\NVIC;.\USER\USART</IncludePath>
+              <IncludePath>.\USER;.\CMSIS;.\LIB\inc;.\USER\NVIC;.\USER\USART;.\USER\SPI</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -430,6 +430,11 @@
               <FileName>NVIC_CONFIG.C</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\NVIC\NVIC_CONFIG.C</FilePath>
+            </File>
+            <File>
+              <FileName>SPI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\SPI\SPI.c</FilePath>
             </File>
           </Files>
         </Group>
