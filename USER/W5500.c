@@ -18,30 +18,16 @@ uint8_t S0_Target_Port[2]={0x7B,0x17};	//端口0目的端口号(0x7B17 31511)
 uint8_t UDP_Target_IPR[4]={192,168,1,105};	//UDP(广播)模式,目的主机IP地址
 uint8_t UDP_Target_Port[2]={0x7B,0x17};	//UDP(广播)模式,目的主机端口号
 
-/***************----- 端口的运行模式 -----***************/
-uint8_t S0_Mode =TCP_CLIENT;
-/*
-端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
-    TCP_SERVER	0x00	//TCP服务器模式
-    TCP_CLIENT	0x01	//TCP客户端模式 
-    UDP_MODE	0x02	//UDP(广播)模式 
-*/
-
-/***************----- 端口的运行状态 -----***************/
-uint8_t S0_State =0;
-/*
-端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
-    S_INIT		0x01	//端口完成初始化 
-    S_CONN		0x02	//端口完成连接,可以正常传输数据 
-*/
-
-/***************----- 端口收发数据的状态 -----***************/
-uint8_t S0_Data = S_TRANSMITOK;
-/*
-端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
-    S_RECEIVE	 0x01	//端口接收到一个数据包 
-    S_TRANSMITOK 0x02	//端口发送一个数据包完成 
-*/
+Socket socket_0 = {
+    0,
+    IP_Addr,
+    5000,
+    S0_Target_IP,
+    31511,
+    TCP_CLIENT,
+    0x00,
+    S_TRANSMITOK
+};
 
 /***************----- 端口数据缓冲区 -----***************/
 uint8_t Rx_Buffer[S_RX_SIZE];	//端口接收数据缓冲区
@@ -195,12 +181,12 @@ void Write_W5500_nByte(uint16_t reg, uint8_t *dat_ptr, uint16_t size)
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void Write_W5500_SOCK_1Byte(SOCKET s, uint16_t reg, uint8_t dat)
+void Write_W5500_SOCK_1Byte(uint8_t socket_index, uint16_t reg, uint8_t dat)
 {
 	W5500_SCS_Low();//置W5500的SCS为低电平	
 		
 	W5500_SPI_Send_Short(reg);//通过SPI写16位寄存器地址
-	W5500_SPI_Send_Byte(FDM1|RWB_WRITE|(s*0x20+0x08));//通过SPI写控制字节,1个字节数据长度,写数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(FDM1|RWB_WRITE|(socket_index*0x20+0x08));//通过SPI写控制字节,1个字节数据长度,写数据,选择端口s的寄存器
 	W5500_SPI_Send_Byte(dat);//写1个字节数据
 
 	W5500_SCS_High(); //置W5500的SCS为高电平
@@ -214,12 +200,12 @@ void Write_W5500_SOCK_1Byte(SOCKET s, uint16_t reg, uint8_t dat)
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void Write_W5500_SOCK_2Byte(SOCKET s, uint16_t reg, uint16_t dat)
+void Write_W5500_SOCK_2Byte(uint8_t socket_index, uint16_t reg, uint16_t dat)
 {
 	W5500_SCS_Low();//置W5500的SCS为低电平
 			
 	W5500_SPI_Send_Short(reg);//通过SPI写16位寄存器地址
-	W5500_SPI_Send_Byte(FDM2|RWB_WRITE|(s*0x20+0x08));//通过SPI写控制字节,2个字节数据长度,写数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(FDM2|RWB_WRITE|(socket_index*0x20+0x08));//通过SPI写控制字节,2个字节数据长度,写数据,选择端口s的寄存器
 	W5500_SPI_Send_Short(dat);//写16位数据
 
 	W5500_SCS_High(); //置W5500的SCS为高电平
@@ -233,12 +219,12 @@ void Write_W5500_SOCK_2Byte(SOCKET s, uint16_t reg, uint16_t dat)
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void Write_W5500_SOCK_4Byte(SOCKET s, uint16_t reg, uint8_t *dat_ptr)
+void Write_W5500_SOCK_4Byte(uint8_t socket_index, uint16_t reg, uint8_t *dat_ptr)
 {
 	W5500_SCS_Low();//置W5500的SCS为低电平
 			
 	W5500_SPI_Send_Short(reg);//通过SPI写16位寄存器地址
-	W5500_SPI_Send_Byte(FDM4|RWB_WRITE|(s*0x20+0x08));//通过SPI写控制字节,4个字节数据长度,写数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(FDM4|RWB_WRITE|(socket_index*0x20+0x08));//通过SPI写控制字节,4个字节数据长度,写数据,选择端口s的寄存器
 
 	W5500_SPI_Send_Byte(*dat_ptr++);//写第1个字节数据
 	W5500_SPI_Send_Byte(*dat_ptr++);//写第2个字节数据
@@ -281,14 +267,14 @@ uint8_t Read_W5500_1Byte(uint16_t reg)
 * 返回值  : 读取到寄存器的1个字节数据
 * 说明    : 无
 *******************************************************************************/
-uint8_t Read_W5500_SOCK_1Byte(SOCKET s, uint16_t reg)
+uint8_t Read_W5500_SOCK_1Byte(uint8_t socket_index, uint16_t reg)
 {
 	uint8_t i;
 
 	W5500_SCS_Low();//置W5500的SCS为低电平
 			
 	W5500_SPI_Send_Short(reg);//通过SPI写16位寄存器地址
-	W5500_SPI_Send_Byte(FDM1|RWB_READ|(s*0x20+0x08));//通过SPI写控制字节,1个字节数据长度,读数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(FDM1|RWB_READ|(socket_index*0x20+0x08));//通过SPI写控制字节,1个字节数据长度,读数据,选择端口s的寄存器
 
 	i=W5500_SPI_Receive_Data();
 	W5500_SPI_Send_Byte(0x00);//发送一个哑数据
@@ -306,14 +292,14 @@ uint8_t Read_W5500_SOCK_1Byte(SOCKET s, uint16_t reg)
 * 返回值  : 读取到寄存器的2个字节数据(16位)
 * 说明    : 无
 *******************************************************************************/
-uint16_t Read_W5500_SOCK_2Byte(SOCKET s, uint16_t reg)
+uint16_t Read_W5500_SOCK_2Byte(uint8_t socket_index, uint16_t reg)
 {
 	uint16_t i;
 
 	W5500_SCS_Low();//置W5500的SCS为低电平
 			
 	W5500_SPI_Send_Short(reg);//通过SPI写16位寄存器地址
-	W5500_SPI_Send_Byte(FDM2|RWB_READ|(s*0x20+0x08));//通过SPI写控制字节,2个字节数据长度,读数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(FDM2|RWB_READ|(socket_index*0x20+0x08));//通过SPI写控制字节,2个字节数据长度,读数据,选择端口s的寄存器
 
 	i=W5500_SPI_Receive_Data();
 	W5500_SPI_Send_Byte(0x00);//发送一个哑数据
@@ -334,25 +320,25 @@ uint16_t Read_W5500_SOCK_2Byte(SOCKET s, uint16_t reg)
 * 返回值  : 读取到的数据长度,rx_size个字节
 * 说明    : 无
 *******************************************************************************/
-uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr)
+uint16_t Read_SOCK_Data_Buffer(Socket* socket, uint8_t *dat_ptr)
 {
 	uint16_t rx_size;
 	uint16_t offset, offset1;
 	uint16_t i;
 	uint8_t j;
 
-	rx_size=Read_W5500_SOCK_2Byte(s,Sn_RX_RSR);
+	rx_size=Read_W5500_SOCK_2Byte(socket->socket_index,Sn_RX_RSR);
 	if(rx_size==0) return 0;//没接收到数据则返回
 	if(rx_size>1460) rx_size=1460;
 
-	offset=Read_W5500_SOCK_2Byte(s,Sn_RX_RD);
+	offset=Read_W5500_SOCK_2Byte(socket->socket_index,Sn_RX_RD);
 	offset1=offset;
 	offset&=(S_RX_SIZE-1);//计算实际的物理地址
 
 	W5500_SCS_Low();//置W5500的SCS为低电平
 
 	W5500_SPI_Send_Short(offset);//写16位地址
-	W5500_SPI_Send_Byte(VDM|RWB_READ|(s*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(VDM|RWB_READ|(socket->socket_index*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
 	j=W5500_SPI_Receive_Data();
 	
 	if((offset+rx_size)<S_RX_SIZE)//如果最大地址未超过W5500接收缓冲区寄存器的最大地址
@@ -380,7 +366,7 @@ uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr)
 		W5500_SCS_Low();//置W5500的SCS为低电平
 
 		W5500_SPI_Send_Short(0x00);//写16位地址
-		W5500_SPI_Send_Byte(VDM|RWB_READ|(s*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
+		W5500_SPI_Send_Byte(VDM|RWB_READ|(socket->socket_index*0x20+0x18));//写控制字节,N个字节数据长度,读数据,选择端口s的寄存器
 		j=W5500_SPI_Receive_Data();
 
 		for(;i<rx_size;i++)//循环读取后rx_size-offset个字节数据
@@ -394,8 +380,8 @@ uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr)
 	W5500_SCS_High(); //置W5500的SCS为高电平
 
 	offset1+=rx_size;//更新实际物理地址,即下次读取接收到的数据的起始地址
-	Write_W5500_SOCK_2Byte(s, Sn_RX_RD, offset1);
-	Write_W5500_SOCK_1Byte(s, Sn_CR, RECV);//发送启动接收命令
+	Write_W5500_SOCK_2Byte(socket->socket_index, Sn_RX_RD, offset1);
+	Write_W5500_SOCK_1Byte(socket->socket_index, Sn_CR, RECV);//发送启动接收命令
 	return rx_size;//返回接收到数据的长度
 }
 
@@ -407,26 +393,26 @@ uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr)
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size)
+void W5500_Send_Socket_Data(Socket* socket, uint8_t *dat_ptr, uint16_t size)
 {
 	uint16_t offset,offset1;
 	uint16_t i;
 
 	//如果是UDP模式,可以在此设置目的主机的IP和端口号
-	if((Read_W5500_SOCK_1Byte(s,Sn_MR)&0x0f) != SOCK_UDP)//如果Socket打开失败
+	if((Read_W5500_SOCK_1Byte(socket->socket_index,Sn_MR)&0x0f) != SOCK_UDP)//如果Socket打开失败
 	{		
-		Write_W5500_SOCK_4Byte(s, Sn_DIPR, UDP_Target_IPR);//设置目的主机IP  		
-		Write_W5500_SOCK_2Byte(s, Sn_DPORTR, ((uint16_t)UDP_Target_Port[0]<<8)+UDP_Target_Port[1]);//设置目的主机端口号				
+		Write_W5500_SOCK_4Byte(socket->socket_index, Sn_DIPR, UDP_Target_IPR);//设置目的主机IP  		
+		Write_W5500_SOCK_2Byte(socket->socket_index, Sn_DPORTR, ((uint16_t)UDP_Target_Port[0]<<8)+UDP_Target_Port[1]);//设置目的主机端口号				
 	}
 
-	offset=Read_W5500_SOCK_2Byte(s,Sn_TX_WR);
+	offset=Read_W5500_SOCK_2Byte(socket->socket_index,Sn_TX_WR);
 	offset1=offset;
 	offset&=(S_TX_SIZE-1);//计算实际的物理地址
 
 	W5500_SCS_Low();//置W5500的SCS为低电平
 
 	W5500_SPI_Send_Short(offset);//写16位地址
-	W5500_SPI_Send_Byte(VDM|RWB_WRITE|(s*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
+	W5500_SPI_Send_Byte(VDM|RWB_WRITE|(socket->socket_index*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
 
 	if((offset+size)<S_TX_SIZE)//如果最大地址未超过W5500发送缓冲区寄存器的最大地址
 	{
@@ -447,7 +433,7 @@ void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 		W5500_SCS_Low();//置W5500的SCS为低电平
 
 		W5500_SPI_Send_Short(0x00);//写16位地址
-		W5500_SPI_Send_Byte(VDM|RWB_WRITE|(s*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
+		W5500_SPI_Send_Byte(VDM|RWB_WRITE|(socket->socket_index*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
 
 		for(;i<size;i++)//循环写入size-offset个字节数据
 		{
@@ -457,8 +443,8 @@ void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 	W5500_SCS_High(); //置W5500的SCS为高电平
 
 	offset1+=size;//更新实际物理地址,即下次写待发送数据到发送数据缓冲区的起始地址
-	Write_W5500_SOCK_2Byte(s, Sn_TX_WR, offset1);
-	Write_W5500_SOCK_1Byte(s, Sn_CR, SEND);//发送启动发送命令				
+	Write_W5500_SOCK_2Byte(socket->socket_index, Sn_TX_WR, offset1);
+	Write_W5500_SOCK_1Byte(socket->socket_index, Sn_CR, SEND);//发送启动发送命令				
 }
 
 
@@ -490,7 +476,7 @@ void W5500_Hardware_Reset(void)
 void W5500_Init(void)
 {
     uint8_t socket_index;
-    SOCKET socket = 0;
+    Socket* socket = &socket_0;
     printf("W5500 reset.\r\n");
 	W5500_GPIO_Configuration();	//W5500 GPIO初始化配置
     W5500_NVIC_Configuration(); //W5500 中断配置
@@ -536,7 +522,7 @@ void W5500_Init(void)
     printf("W5500 IRQn init.\r\n");
 	Write_W5500_1Byte(IMR,IM_IR7 | IM_IR6);
 	Write_W5500_1Byte(SIMR,S0_IMR);
-	Write_W5500_SOCK_1Byte(socket, Sn_IMR, IMR_SENDOK | IMR_TIMEOUT | IMR_RECV | IMR_DISCON | IMR_CON);
+	Write_W5500_SOCK_1Byte(socket->socket_index, Sn_IMR, IMR_SENDOK | IMR_TIMEOUT | IMR_RECV | IMR_DISCON | IMR_CON);
     printf("W5500 detect Gateway.\r\n");
     Detect_Gateway(socket);	//检查网关服务器
     printf("W5500 socket init.\r\n");
@@ -552,42 +538,42 @@ void W5500_Init(void)
 * 返回值  : 成功返回TRUE(0xFF),失败返回FALSE(0x00)
 * 说明    : 无
 *******************************************************************************/
-uint8_t Detect_Gateway(SOCKET socket)
+uint8_t Detect_Gateway(Socket* socket)
 {
 	uint8_t ip_adde[4];
-	ip_adde[0]=IP_Addr[0]+1;
-	ip_adde[1]=IP_Addr[1]+1;
-	ip_adde[2]=IP_Addr[2]+1;
-	ip_adde[3]=IP_Addr[3]+1;
+	ip_adde[0]=socket->local_IP[0]+1;
+	ip_adde[1]=socket->local_IP[1]+1;
+	ip_adde[2]=socket->local_IP[2]+1;
+	ip_adde[3]=socket->local_IP[3]+1;
 
 	//检查网关及获取网关的物理地址
-	Write_W5500_SOCK_4Byte(socket,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
-	Write_W5500_SOCK_1Byte(socket,Sn_MR,MR_TCP);//设置socket为TCP模式
-	Write_W5500_SOCK_1Byte(socket,Sn_CR,OPEN);//打开Socket	
+	Write_W5500_SOCK_4Byte(socket->socket_index,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_MR,MR_TCP);//设置socket为TCP模式
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,OPEN);//打开Socket	
 	W5500_Delay_ms(5);//延时5ms 	
 	
-	if(Read_W5500_SOCK_1Byte(socket,Sn_SR) != SOCK_INIT)//如果socket打开失败
+	if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_SR) != SOCK_INIT)//如果socket打开失败
 	{
-		Write_W5500_SOCK_1Byte(socket,Sn_CR,CLOSE);//打开不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}
 
-	Write_W5500_SOCK_1Byte(socket,Sn_CR,CONNECT);//设置Socket为Connect模式						
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CONNECT);//设置Socket为Connect模式						
 
 	do
 	{
 		u8 j=0;
-		j=Read_W5500_SOCK_1Byte(socket,Sn_IR);//读取Socket0中断标志寄存器
+		j=Read_W5500_SOCK_1Byte(socket->socket_index,Sn_IR);//读取Socket0中断标志寄存器
 		if(j!=0)
-		Write_W5500_SOCK_1Byte(socket,Sn_IR,j);
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_IR,j);
 		W5500_Delay_ms(5);//延时5ms 
 		if((j&IR_TIMEOUT) == IR_TIMEOUT)
 		{
 			return FALSE;	
 		}
-		else if(Read_W5500_SOCK_1Byte(socket,Sn_DHAR) != 0xff)
+		else if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_DHAR) != 0xff)
 		{
-			Write_W5500_SOCK_1Byte(socket,Sn_CR,CLOSE);//关闭Socket
+			Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//关闭Socket
 			return TRUE;							
 		}
 	}while(1);
@@ -601,20 +587,20 @@ uint8_t Detect_Gateway(SOCKET socket)
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void Socket_Init(SOCKET s)
+void Socket_Init(Socket* socket)
 {
 	//设置分片长度，参考W5500数据手册，该值可以不修改	
-	Write_W5500_SOCK_2Byte(0, Sn_MSSR, 1460);//最大分片字节数=1460(0x5b4)
+	Write_W5500_SOCK_2Byte(socket->socket_index, Sn_MSSR, 1460);//最大分片字节数=1460(0x5b4)
 	//设置指定端口
-	switch(s)
+	switch(socket->socket_index)
 	{
 		case 0:
 			//设置端口0的端口号
-			Write_W5500_SOCK_2Byte(0, Sn_PORT, ((uint16_t)S0_Port[0] << 8)+S0_Port[1]);
+			Write_W5500_SOCK_2Byte(socket->socket_index, Sn_PORT, socket->local_Port);
 			//设置端口0目的(远程)端口号
-			Write_W5500_SOCK_2Byte(0, Sn_DPORTR,((uint16_t)S0_Target_Port[0] << 8)+S0_Target_Port[1]);
+			Write_W5500_SOCK_2Byte(socket->socket_index, Sn_DPORTR,socket->target_Port);
 			//设置端口0目的(远程)IP地址
-			Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_Target_IP);			
+			Write_W5500_SOCK_4Byte(socket->socket_index, Sn_DIPR, socket->target_IP);			
 			
 			break;
 
@@ -653,35 +639,35 @@ void Socket_Init(SOCKET s)
 * 说明    : 分别设置4个端口,根据端口工作模式,将端口置于TCP服务器、TCP客户端或UDP模式.
 *			从端口状态字节Socket_State可以判断端口的工作情况
 *******************************************************************************/
-bool W5500_Socket_Set_Default(void)
+bool W5500_Socket_Set_Default(Socket* socket)
 {
-	if(S0_State==0)//端口0初始化配置
+	if(socket->port_State==0)//端口0初始化配置
 	{
-		if(S0_Mode==TCP_SERVER)//TCP服务器模式 
+		if(socket->socket_Mode==TCP_SERVER)//TCP服务器模式 
 		{
-			if(Socket_Listen(0)==TRUE)
+			if(Socket_Listen(socket)==TRUE)
             {
-				S0_State=S_INIT;
+				socket->port_State=S_INIT;
                 return true;
             }
 		}
-		else if(S0_Mode==TCP_CLIENT)//TCP客户端模式 
+		else if(socket->socket_Mode==TCP_CLIENT)//TCP客户端模式 
 		{
-			if(Socket_Connect(0)==TRUE)
+			if(Socket_Connect(socket)==TRUE)
             {
-				S0_State=S_INIT;
+				socket->port_State=S_INIT;
                 return true;
             }
 		}
 		else//UDP模式 
 		{
-			if(Socket_UDP(0)==TRUE)
+			if(Socket_UDP(socket)==TRUE)
             {
-				S0_State=S_INIT|S_CONN;
+				socket->port_State=S_INIT|S_CONN;
                 return true;
             }
 		}
-        S0_State=0;
+        socket->port_State=0;
         return false;
 	}
     return true;
@@ -697,17 +683,17 @@ bool W5500_Socket_Set_Default(void)
 *			如果启动连接后出现超时中断，则与服务器连接失败,需要重新调用该程序连接
 *			该程序每调用一次,就与服务器产生一次连接
 *******************************************************************************/
-uint8_t Socket_Connect(SOCKET s)
+uint8_t Socket_Connect(Socket* socket)
 {
-	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式
-	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_MR,MR_TCP);//设置socket为TCP模式
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,OPEN);//打开Socket
 	W5500_Delay_ms(5);//延时5ms
-	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
+	if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
-		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}
-	Write_W5500_SOCK_1Byte(s,Sn_CR,CONNECT);//设置Socket为Connect模式
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CONNECT);//设置Socket为Connect模式
 	return TRUE;//返回TRUE,设置成功
 }
 
@@ -720,21 +706,21 @@ uint8_t Socket_Connect(SOCKET s)
 * 说明    : 当本机Socket工作在服务器模式时,引用该程序,等等远程主机的连接
 *			该程序只调用一次,就使W5500设置为服务器模式
 *******************************************************************************/
-uint8_t Socket_Listen(SOCKET s)
+uint8_t Socket_Listen(Socket* socket)
 {
-	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式 
-	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket	
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_MR,MR_TCP);//设置socket为TCP模式 
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,OPEN);//打开Socket	
 	W5500_Delay_ms(5);//延时5ms
-	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
+	if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
-		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}	
-	Write_W5500_SOCK_1Byte(s,Sn_CR,LISTEN);//设置Socket为侦听模式	
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,LISTEN);//设置Socket为侦听模式	
 	W5500_Delay_ms(5);//延时5ms
-	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_LISTEN)//如果socket设置失败
+	if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_SR)!=SOCK_LISTEN)//如果socket设置失败
 	{
-		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//设置不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//设置不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}
 
@@ -754,14 +740,14 @@ uint8_t Socket_Listen(SOCKET s)
 * 说明    : 如果Socket工作在UDP模式,引用该程序,在UDP模式下,Socket通信不需要建立连接
 *			该程序只调用一次，就使W5500设置为UDP模式
 *******************************************************************************/
-uint8_t Socket_UDP(SOCKET s)
+uint8_t Socket_UDP(Socket* socket)
 {
-	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_UDP);//设置Socket为UDP模式*/
-	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket*/
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_MR,MR_UDP);//设置Socket为UDP模式*/
+	Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,OPEN);//打开Socket*/
 	W5500_Delay_ms(5);//延时5ms
-	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_UDP)//如果Socket打开失败
+	if(Read_W5500_SOCK_1Byte(socket->socket_index,Sn_SR)!=SOCK_UDP)//如果Socket打开失败
 	{
-		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
+		Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}
 	else
@@ -799,50 +785,52 @@ void W5500_INT_EXTI_IRQHandler(void)
 *******************************************************************************/
 void W5500_Interrupt_Process(void)
 {
-	uint8_t i,j;
+	uint8_t IRQ_sign;
+    Socket* socket;
     while(1)
     {
         W5500_Interrupt=0;//清零中断标志
-        i = Read_W5500_1Byte(IR);//读取中断标志寄存器
-        Write_W5500_1Byte(IR, (i&0xf0));//回写清除中断标志
+        IRQ_sign = Read_W5500_1Byte(IR);//读取中断标志寄存器
+        Write_W5500_1Byte(IR, (IRQ_sign&0xf0));//回写清除中断标志
 
-        if((i & CONFLICT) == CONFLICT)//IP地址冲突异常处理
+        if((IRQ_sign & CONFLICT) == CONFLICT)//IP地址冲突异常处理
         {
              //自己添加代码
         }
 
-        if((i & UNREACH) == UNREACH)//UDP模式下地址无法到达异常处理
+        if((IRQ_sign & UNREACH) == UNREACH)//UDP模式下地址无法到达异常处理
         {
             //自己添加代码
         }
 
-        i=Read_W5500_1Byte(SIR);//读取端口中断标志寄存器	
-        if((i & S0_INT) == S0_INT)//Socket0事件处理 
+        IRQ_sign=Read_W5500_1Byte(SIR);//读取端口中断标志寄存器	
+        if((IRQ_sign & S0_INT) == S0_INT)//Socket0事件处理 
         {
-            j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
-            Write_W5500_SOCK_1Byte(0,Sn_IR,j);
-            if(j&IR_CON)//在TCP模式下,Socket0成功连接 
+            socket = &socket_0;
+            IRQ_sign=Read_W5500_SOCK_1Byte(socket->socket_index,Sn_IR);//读取Socket0中断标志寄存器
+            Write_W5500_SOCK_1Byte(socket->socket_index,Sn_IR,IRQ_sign);
+            if(IRQ_sign&IR_CON)//在TCP模式下,Socket0成功连接 
             {
-                S0_State|=S_CONN;//网络连接状态0x02,端口完成连接，可以正常传输数据
+                socket->port_State|=S_CONN;//网络连接状态0x02,端口完成连接，可以正常传输数据
             }
-            if(j&IR_DISCON)//在TCP模式下Socket断开连接处理
+            if(IRQ_sign&IR_DISCON)//在TCP模式下Socket断开连接处理
             {
-                Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);//关闭端口,等待重新打开连接 
-                Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
-                S0_State=0;//网络连接状态0x00,端口连接失败
+                Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);//关闭端口,等待重新打开连接 
+                Socket_Init(socket);		//指定Socket(0~7)初始化,初始化端口0
+                socket->port_State=0;//网络连接状态0x00,端口连接失败
             }
-            if(j&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
+            if(IRQ_sign&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
             {
-                S0_Data|=S_TRANSMITOK;//端口发送一个数据包完成
+                socket->send_receive_State|=S_TRANSMITOK;//端口发送一个数据包完成
             }
-            if(j&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
+            if(IRQ_sign&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
             {
-                S0_Data|=S_RECEIVE;//端口接收到一个数据包
+                socket->send_receive_State|=S_RECEIVE;//端口接收到一个数据包
             }
-            if(j&IR_TIMEOUT)//Socket连接或数据传输超时处理 
+            if(IRQ_sign&IR_TIMEOUT)//Socket连接或数据传输超时处理 
             {
-                Write_W5500_SOCK_1Byte(0,Sn_CR,CLOSE);// 关闭端口,等待重新打开连接 
-                S0_State=0;//网络连接状态0x00,端口连接失败
+                Write_W5500_SOCK_1Byte(socket->socket_index,Sn_CR,CLOSE);// 关闭端口,等待重新打开连接 
+                socket->port_State=0;//网络连接状态0x00,端口连接失败
             }
         }
 
@@ -853,8 +841,8 @@ void W5500_Interrupt_Process(void)
 
 bool W5500_Daemon_Process(void)
 {
-
-    if(W5500_Socket_Set_Default() == false)//W5500端口初始化配置
+    Socket* socket = &socket_0;
+    if(W5500_Socket_Set_Default(socket) == false)//W5500端口初始化配置
     {
         return false;
     }
@@ -862,23 +850,23 @@ bool W5500_Daemon_Process(void)
     {
         W5500_Interrupt_Process();//W5500中断处理程序框架
     }
-    if((S0_Data & S_RECEIVE) == S_RECEIVE)//如果Socket0接收到数据
+    if((socket->send_receive_State & S_RECEIVE) == S_RECEIVE)//如果Socket0接收到数据
     {
-        S0_Data&=~S_RECEIVE;
-        W5500_Process_Socket_Data(0);//W5500接收并发送接收到的数据
+        socket->send_receive_State&=~S_RECEIVE;
+        W5500_Process_Socket_Data(socket);//W5500接收并发送接收到的数据
     }
     else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
     {
-        if(S0_State == (S_INIT|S_CONN))
+        if(socket->port_State == (S_INIT|S_CONN))
         {
-            if((S0_Data & S_TRANSMITOK) == S_TRANSMITOK)
+            if((socket->send_receive_State & S_TRANSMITOK) == S_TRANSMITOK)
             {
-                S0_Data&=~S_TRANSMITOK;
-                W5500_Send_Socket_Data(0, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
-                W5500_Send_Socket_Data(0, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
-                W5500_Send_Socket_Data(0, "ABBBBBBBBBBBBBBBBBBBCC\r\n", 24);
-                W5500_Send_Socket_Data(0, "KgggggggggggggggggggPP\r\n", 24);
-                W5500_Send_Socket_Data(0, "QERdoignsoidfjgoidodTT\r\n", 24);
+                socket->send_receive_State&=~S_TRANSMITOK;
+                W5500_Send_Socket_Data(socket, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
+                W5500_Send_Socket_Data(socket, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
+                W5500_Send_Socket_Data(socket, "ABBB1234BB345634BBBBCC\r\n", 24);
+                W5500_Send_Socket_Data(socket, "Kggggg5678ggggggggggPP\r\n", 24);
+                W5500_Send_Socket_Data(socket, "QERdoig-----+++oidodTT\r\n", 24);
             }
         }
         W5500_Send_Delay_Counter=500;
@@ -898,14 +886,14 @@ bool W5500_Daemon_Process(void)
 *			处理完毕，将数据从Temp_Buffer拷贝到Tx_Buffer缓冲区。调用S_tx_process()
 *			发送数据。
 *******************************************************************************/
-void W5500_Process_Socket_Data(SOCKET s)
+void W5500_Process_Socket_Data(Socket* socket)
 {
 	uint16_t size;
     uint8_t* Tx_Buffer;
-	size=Read_SOCK_Data_Buffer(s, Rx_Buffer);
+	size=Read_SOCK_Data_Buffer(socket, Rx_Buffer);
     Tx_Buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
 	memcpy(Tx_Buffer, Rx_Buffer, size);	
-	W5500_Send_Socket_Data(s, Tx_Buffer, size);
+	W5500_Send_Socket_Data(socket, Tx_Buffer, size);
     free(Tx_Buffer);
 }
 

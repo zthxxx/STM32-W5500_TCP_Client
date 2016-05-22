@@ -247,47 +247,52 @@ extern uint8_t UDP_Target_IPR[4];	//UDP(广播)模式,目的主机IP地址
 extern uint8_t UDP_Target_Port[2];	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
-extern uint8_t S0_Mode;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
+//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
 #define TCP_SERVER		0x00	//TCP服务器模式
 #define TCP_CLIENT		0x01	//TCP客户端模式 
 #define UDP_MODE		0x02	//UDP(广播)模式 
 
 /***************----- 端口的运行状态 -----***************/
-extern uint8_t S0_State;	//端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
+//端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
 #define S_INIT			0x01	//端口完成初始化 
 #define S_CONN			0x02	//端口完成连接,可以正常传输数据 
 
 /***************----- 端口收发数据的状态 -----***************/
-extern uint8_t S0_Data;		//端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
+//端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
 #define S_RECEIVE		0x01		//端口接收到一个数据包 
 #define S_TRANSMITOK	0x02		//端口发送一个数据包完成 
 
 
-extern uint8_t W5500_Interrupt;	//W5500中断标志(0:无中断,1:有中断)
-typedef uint8_t SOCKET;			//自定义端口号数据类型
+typedef struct Socket
+{
+    uint8_t socket_index;
+    uint8_t* local_IP;
+    uint16_t local_Port;
+    uint8_t* target_IP;
+    uint16_t target_Port;
+    uint8_t socket_Mode;//端口的运行模, 00H:TCP服务器模式, 01H:TCP客户端模式, 02H:UDP(广播)模式
+    uint8_t port_State;//端口状态记录, 01H:端口完成初始化, 02H端口完成连接(可以正常传输数据) 
+    uint8_t send_receive_State;//端口接收和发送数据的状态, 01H:端口接收到数据, 02H:端口发送数据完成 
+} Socket;
+
+extern Socket socket_0;
 
 void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置
 void W5500_SPI_Configuration(void);//W5500 SPI初始化配置(STM32 SPI1)
 void W5500_Hardware_Reset(void);//硬件复位W5500
-void Socket_Init(SOCKET s);//指定Socket(0~7)初始化
-uint8_t Socket_Connect(SOCKET s);//设置指定Socket(0~7)为客户端与远程服务器连接
-uint8_t Socket_Listen(SOCKET s);//设置指定Socket(0~7)作为服务器等待远程主机的连接
-uint8_t Socket_UDP(SOCKET s);//设置指定Socket(0~7)为UDP模式
-uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);//指定Socket(0~7)接收数据处理
-void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size); //指定Socket(0~7)发送数据处理
-void W5500_Process_Socket_Data(SOCKET s);//W5500接收并处理接收到的数据
+void Socket_Init(Socket* socket);//指定Socket(0~7)初始化
+bool W5500_Socket_Set_Default(Socket* socket);//Socket0设置为默认状态
+uint8_t Detect_Gateway(Socket* socket);//检查网关服务器
 
-void Write_W5500_SOCK_1Byte(SOCKET s, uint16_t reg, uint8_t dat);
-void Write_W5500_SOCK_2Byte(SOCKET s, uint16_t reg, uint16_t dat);
-void Write_W5500_SOCK_4Byte(SOCKET s, uint16_t reg, uint8_t *dat_ptr);
-uint8_t Read_W5500_SOCK_1Byte(SOCKET s, uint16_t reg);
-uint16_t Read_W5500_SOCK_2Byte(SOCKET s, uint16_t reg);
-uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);
-uint8_t Detect_Gateway(SOCKET socket);//检查网关服务器
+uint8_t Socket_Connect(Socket* socket);//设置指定Socket(0~7)为客户端与远程服务器连接
+uint8_t Socket_Listen(Socket* socket);//设置指定Socket(0~7)作为服务器等待远程主机的连接
+uint8_t Socket_UDP(Socket* socket);//设置指定Socket(0~7)为UDP模式
+uint16_t Read_SOCK_Data_Buffer(Socket* socket, uint8_t *dat_ptr);//指定Socket(0~7)接收数据处理
+void W5500_Send_Socket_Data(Socket* socket, uint8_t *dat_ptr, uint16_t size); //指定Socket(0~7)发送数据处理
+void W5500_Process_Socket_Data(Socket* socket);//W5500接收并处理接收到的数据
 
 void W5500_Init(void);//初始化W5500寄存器函数
-bool W5500_Socket_Set_Default(void);//Socket0设置为默认状态
 bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
 void W5500_Interrupt_Process(void);//W5500中断处理程序框架
 
