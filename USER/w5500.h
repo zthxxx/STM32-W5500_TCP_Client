@@ -207,7 +207,8 @@
 #define S_TX_SIZE	2048  	/*定义Socket发送缓冲区的大小，可以根据W5500_TMSR的设置修改 */
 
 /***************----- W5500 GPIO定义 -----***************/
-#define W5500_SCS_PIN		        GPIO_Pin_4	//定义W5500的CS引脚	 
+
+#define W5500_SCS_PIN		        GPIO_Pin_15	//定义W5500的CS引脚	 
 #define W5500_SCS_PORT	            GPIOA
 	
 #define W5500_RST_PIN		        GPIO_Pin_2	//定义W5500的RST引脚
@@ -220,6 +221,11 @@
 #define W5500_INT_EXTI_LINE         EXTI_Line3
 #define W5500_INT_EXTI_IRQn         EXTI3_IRQn
 #define W5500_INT_EXTI_IRQHandler   EXTI3_IRQHandler
+
+#define W5500_SPI_Configuration     SPI3_Init
+#define W5500_SPI_Send_Byte         SPI3_Send_Byte
+#define W5500_SPI_Receive_Data      SPI3_Receive_Data
+
 
 /***************----- 网络参数变量定义 -----***************/
 extern uint8_t Gateway_IP[4];	//网关IP地址 
@@ -260,9 +266,6 @@ typedef uint8_t SOCKET;			//自定义端口号数据类型
 extern void delay_ms(uint32_t d);//延时函数(ms)
 extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
 
-#define W5500_SPI_Configuration     SPI1_Init
-#define W5500_SPI_Send_Byte         SPI1_Send_Byte
-#define W5500_SPI_Receive_Data      SPI1_Receive_Data
 
 void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置

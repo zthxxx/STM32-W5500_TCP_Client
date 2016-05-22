@@ -92,14 +92,44 @@ void SPI1_Init(void)
 	SPI_Cmd(SPI1,ENABLE);	//STM32使能SPI
 }
 
-/*******************************************************************************
-* 函数名  : SPI1_Send_Byte
-* 描述    : SPI1发送1个字节数据
-* 输入    : dat:待发送的数据
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 无
-*******************************************************************************/
+void SPI3_Init(void)
+{
+	GPIO_InitTypeDef 	GPIO_InitStructure;
+	SPI_InitTypeDef   	SPI_InitStructure;	   
+
+  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);	
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+    
+	/* 初始化SCK、MISO、MOSI引脚 */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_SetBits(GPIOB,GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5);
+
+	/* 初始化CS引脚 */
+	GPIO_InitStructure.GPIO_Pin = W5500_SCS_PIN;
+	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_Out_PP;
+	GPIO_Init(W5500_SCS_PORT, &GPIO_InitStructure);
+	GPIO_SetBits(W5500_SCS_PORT,W5500_SCS_PIN);
+
+	/* 初始化配置STM32 SPI */
+	SPI_InitStructure.SPI_Direction=SPI_Direction_2Lines_FullDuplex;	//SPI设置为双线双向全双工
+	SPI_InitStructure.SPI_Mode=SPI_Mode_Master;							//设置为主SPI
+	SPI_InitStructure.SPI_DataSize=SPI_DataSize_8b;						//SPI发送接收8位帧结构
+	SPI_InitStructure.SPI_CPOL=SPI_CPOL_Low;							//时钟悬空低
+	SPI_InitStructure.SPI_CPHA=SPI_CPHA_1Edge;							//数据捕获于第1个时钟沿
+	SPI_InitStructure.SPI_NSS=SPI_NSS_Soft;								//NSS由外部管脚管理
+	SPI_InitStructure.SPI_BaudRatePrescaler=SPI_BaudRatePrescaler_2;	//波特率预分频值为2
+	SPI_InitStructure.SPI_FirstBit=SPI_FirstBit_MSB;					//数据传输从MSB位开始
+	SPI_InitStructure.SPI_CRCPolynomial=7;								//CRC多项式为7
+	SPI_Init(SPI3,&SPI_InitStructure);									//根据SPI_InitStruct中指定的参数初始化外设SPI寄存器
+
+	SPI_Cmd(SPI3,ENABLE);	//STM32使能SPI
+}
+
 void SPI1_Send_Byte(uint8_t dat)
 {
 	SPI_I2S_SendData(SPI1,dat);//写1个字节数据
@@ -111,6 +141,16 @@ uint16_t SPI1_Receive_Data()
     return SPI_I2S_ReceiveData(SPI1);
 }
 
+void SPI3_Send_Byte(uint8_t dat)
+{
+	SPI_I2S_SendData(SPI3,dat);//写1个字节数据
+	while(SPI_I2S_GetFlagStatus(SPI3, SPI_I2S_FLAG_TXE) == RESET);//等待数据寄存器空
+}
+
+uint16_t SPI3_Receive_Data()
+{
+    return SPI_I2S_ReceiveData(SPI3);
+}
 
 
 
