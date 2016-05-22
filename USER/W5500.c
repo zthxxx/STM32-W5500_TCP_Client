@@ -464,9 +464,9 @@ void Write_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 void W5500_Hardware_Reset(void)
 {
 	GPIO_ResetBits(W5500_RST_PORT, W5500_RST_PIN);//复位引脚拉低
-	delay_ms(50);
+	W5500_Delay_ms(50);
 	GPIO_SetBits(W5500_RST_PORT, W5500_RST_PIN);//复位引脚拉高
-	delay_ms(200);
+	W5500_Delay_ms(200);
 	while((Read_W5500_1Byte(PHYCFGR)&LINK)==0);//等待以太网连接完成
 }
 
@@ -488,7 +488,7 @@ void W5500_Init(void)
     W5500_Hardware_Reset();		//硬件复位W5500
     
 	Write_W5500_1Byte(MR, RST);//软件复位W5500,置1有效,复位后自动清0
-	delay_ms(10);//延时10ms,自己定义该函数
+	W5500_Delay_ms(10);//延时10ms,自己定义该函数
 
 	//设置网关(Gateway)的IP地址,Gateway_IP为4字节uint8_t数组,自己定义 
 	//使用网关可以使通信突破子网的局限，通过网关可以访问到其它子网或进入Internet
@@ -552,7 +552,7 @@ uint8_t Detect_Gateway(void)
 	Write_W5500_SOCK_4Byte(0,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
 	Write_W5500_SOCK_1Byte(0,Sn_MR,MR_TCP);//设置socket为TCP模式
 	Write_W5500_SOCK_1Byte(0,Sn_CR,OPEN);//打开Socket	
-	delay_ms(5);//延时5ms 	
+	W5500_Delay_ms(5);//延时5ms 	
 	
 	if(Read_W5500_SOCK_1Byte(0,Sn_SR) != SOCK_INIT)//如果socket打开失败
 	{
@@ -568,7 +568,7 @@ uint8_t Detect_Gateway(void)
 		j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
 		if(j!=0)
 		Write_W5500_SOCK_1Byte(0,Sn_IR,j);
-		delay_ms(5);//延时5ms 
+		W5500_Delay_ms(5);//延时5ms 
 		if((j&IR_TIMEOUT) == IR_TIMEOUT)
 		{
 			return FALSE;	
@@ -689,7 +689,7 @@ uint8_t Socket_Connect(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket
-	delay_ms(5);//延时5ms
+	W5500_Delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
@@ -712,14 +712,14 @@ uint8_t Socket_Listen(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式 
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket	
-	delay_ms(5);//延时5ms
+	W5500_Delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}	
 	Write_W5500_SOCK_1Byte(s,Sn_CR,LISTEN);//设置Socket为侦听模式	
-	delay_ms(5);//延时5ms
+	W5500_Delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_LISTEN)//如果socket设置失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//设置不成功,关闭Socket
@@ -746,7 +746,7 @@ uint8_t Socket_UDP(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_UDP);//设置Socket为UDP模式*/
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket*/
-	delay_ms(5);//延时5ms
+	W5500_Delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_UDP)//如果Socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
@@ -874,7 +874,7 @@ void W5500_Interrupt_Process(void)
 
 /*******************************************************************************
 * 函数名  : W5500_Process_Socket_Data
-* 描述    : W5500接收并发送接收到的数据
+* 描述    : W5500接收并处理接收到的数据
 * 输入    : s:端口号
 * 输出    : 无
 * 返回值  : 无

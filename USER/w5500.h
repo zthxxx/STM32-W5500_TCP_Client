@@ -208,6 +208,9 @@
 #define S_RX_SIZE	2048	/*定义Socket接收缓冲区的大小，可以根据W5500_RMSR的设置修改 */
 #define S_TX_SIZE	2048  	/*定义Socket发送缓冲区的大小，可以根据W5500_TMSR的设置修改 */
 
+extern void delay_ms(uint32_t d);//延时函数(ms)
+extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
+
 /***************----- W5500 GPIO定义 -----***************/
 
 #define W5500_SCS_PIN		        GPIO_Pin_15	//定义W5500的CS引脚	 
@@ -227,7 +230,7 @@
 #define W5500_SPI_Configuration     SPI3_Init
 #define W5500_SPI_Send_Byte         SPI3_Send_Byte
 #define W5500_SPI_Receive_Data      SPI3_Receive_Data
-
+#define W5500_Delay_ms              delay_ms
 
 /***************----- 网络参数变量定义 -----***************/
 extern uint8_t Gateway_IP[4];	//网关IP地址 
@@ -265,10 +268,6 @@ extern uint8_t Tx_Buffer[2048];	//端口发送数据缓冲区
 extern uint8_t W5500_Interrupt;	//W5500中断标志(0:无中断,1:有中断)
 typedef uint8_t SOCKET;			//自定义端口号数据类型
 
-extern void delay_ms(uint32_t d);//延时函数(ms)
-extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
-
-
 void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置
 void W5500_SPI_Configuration(void);//W5500 SPI初始化配置(STM32 SPI1)
@@ -284,7 +283,7 @@ uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);//指定Socket(0~7)接收
 bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
 void Write_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr, uint16_t size); //指定Socket(0~7)发送数据处理
 void W5500_Interrupt_Process(void);//W5500中断处理程序框架
-void W5500_Process_Socket_Data(SOCKET s);
+void W5500_Process_Socket_Data(SOCKET s);//W5500接收并处理接收到的数据
 
 #endif
 
