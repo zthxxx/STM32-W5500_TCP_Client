@@ -261,9 +261,6 @@ extern uint8_t S0_Data;		//¶Ë¿Ú0½ÓÊÕºÍ·¢ËÍÊı¾İµÄ×´Ì¬,1:¶Ë¿Ú½ÓÊÕµ½Êı¾İ,2:¶Ë¿Ú·¢ËÍ
 #define S_RECEIVE		0x01		//¶Ë¿Ú½ÓÊÕµ½Ò»¸öÊı¾İ°ü 
 #define S_TRANSMITOK	0x02		//¶Ë¿Ú·¢ËÍÒ»¸öÊı¾İ°üÍê³É 
 
-/***************----- ¶Ë¿ÚÊı¾İ»º³åÇø -----***************/
-extern uint8_t Rx_Buffer[2048];	//¶Ë¿Ú½ÓÊÕÊı¾İ»º³åÇø 
-extern uint8_t Tx_Buffer[2048];	//¶Ë¿Ú·¢ËÍÊı¾İ»º³åÇø 
 
 extern uint8_t W5500_Interrupt;	//W5500ÖĞ¶Ï±êÖ¾(0:ÎŞÖĞ¶Ï,1:ÓĞÖĞ¶Ï)
 typedef uint8_t SOCKET;			//×Ô¶¨Òå¶Ë¿ÚºÅÊı¾İÀàĞÍ
@@ -281,7 +278,7 @@ uint8_t Socket_Listen(SOCKET s);//ÉèÖÃÖ¸¶¨Socket(0~7)×÷Îª·şÎñÆ÷µÈ´ıÔ¶³ÌÖ÷»úµÄÁ¬½
 uint8_t Socket_UDP(SOCKET s);//ÉèÖÃÖ¸¶¨Socket(0~7)ÎªUDPÄ£Ê½
 uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);//Ö¸¶¨Socket(0~7)½ÓÊÕÊı¾İ´¦Àí
 bool W5500_Daemon_Process(void);//W5500µÄÊØ»¤½ø³Ì£¬Ìá¹©¼à²â¶Ë¿Ú×´Ì¬£¬¶Ë¿Ú³õÊ¼»¯£¬ÖĞ¶Ï´¦Àí½Ó¡¢ÊÕ´¦ÀíµÄµ÷ÓÃ
-void Write_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr, uint16_t size); //Ö¸¶¨Socket(0~7)·¢ËÍÊı¾İ´¦Àí
+void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size); //Ö¸¶¨Socket(0~7)·¢ËÍÊı¾İ´¦Àí
 void W5500_Interrupt_Process(void);//W5500ÖĞ¶Ï´¦Àí³ÌĞò¿ò¼Ü
 void W5500_Process_Socket_Data(SOCKET s);//W5500½ÓÊÕ²¢´¦Àí½ÓÊÕµ½µÄÊı¾İ
 

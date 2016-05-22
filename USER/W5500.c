@@ -19,24 +19,32 @@ uint8_t UDP_DIPR[4]={192,168,1,105};	//UDP(广播)模式,目的主机IP地址
 uint8_t UDP_DPORT[2]={0x7B,0x17};	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
-#define TCP_SERVER	0x00	//TCP服务器模式
-#define TCP_CLIENT	0x01	//TCP客户端模式 
-#define UDP_MODE	0x02	//UDP(广播)模式 
-uint8_t S0_Mode =TCP_CLIENT;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
+uint8_t S0_Mode =TCP_CLIENT;
+/*
+端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
+    TCP_SERVER	0x00	//TCP服务器模式
+    TCP_CLIENT	0x01	//TCP客户端模式 
+    UDP_MODE	0x02	//UDP(广播)模式 
+*/
 
 /***************----- 端口的运行状态 -----***************/
-uint8_t S0_State =0;	//端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
-#define S_INIT		0x01	//端口完成初始化 
-#define S_CONN		0x02	//端口完成连接,可以正常传输数据 
+uint8_t S0_State =0;
+/*
+端口0状态记录,1:端口完成初始化,2端口完成连接(可以正常传输数据) 
+    S_INIT		0x01	//端口完成初始化 
+    S_CONN		0x02	//端口完成连接,可以正常传输数据 
+*/
 
 /***************----- 端口收发数据的状态 -----***************/
-uint8_t S0_Data;		//端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
-#define S_RECEIVE	 0x01	//端口接收到一个数据包 
-#define S_TRANSMITOK 0x02	//端口发送一个数据包完成 
+uint8_t S0_Data = S_TRANSMITOK;
+/*
+端口0接收和发送数据的状态,1:端口接收到数据,2:端口发送数据完成 
+    S_RECEIVE	 0x01	//端口接收到一个数据包 
+    S_TRANSMITOK 0x02	//端口发送一个数据包完成 
+*/
 
 /***************----- 端口数据缓冲区 -----***************/
-uint8_t Rx_Buffer[2048];	//端口接收数据缓冲区 
-uint8_t Tx_Buffer[2048];	//端口发送数据缓冲区 
+uint8_t Rx_Buffer[S_RX_SIZE];	//端口接收数据缓冲区
 
 uint8_t W5500_Interrupt;	//W5500中断标志(0:无中断,1:有中断)
 uint16_t W5500_Send_Delay_Counter=0;
@@ -392,14 +400,14 @@ uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr)
 }
 
 /*******************************************************************************
-* 函数名  : Write_SOCK_Data_Buffer
+* 函数名  : W5500_Send_Socket_Data
 * 描述    : 将数据写入W5500的数据发送缓冲区
 * 输入    : s:端口号,*dat_ptr:数据保存缓冲区指针,size:待写入数据的长度
 * 输出    : 无
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void Write_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr, uint16_t size)
+void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 {
 	uint16_t offset,offset1;
 	uint16_t i;
@@ -452,6 +460,7 @@ void Write_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 	Write_W5500_SOCK_2Byte(s, Sn_TX_WR, offset1);
 	Write_W5500_SOCK_1Byte(s, Sn_CR, SEND);//发送启动发送命令				
 }
+
 
 /*******************************************************************************
 * 函数名  : W5500_Hardware_Reset
@@ -780,9 +789,15 @@ bool W5500_Daemon_Process(void)
     {
         if(S0_State == (S_INIT|S_CONN))
         {
-            S0_Data&=~S_TRANSMITOK;
-            memcpy(Tx_Buffer, "\r\nWelcome To YiXinElec!\r\n", 23);	
-            Write_SOCK_Data_Buffer(0, Tx_Buffer, 23);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
+            if((S0_Data & S_TRANSMITOK) == S_TRANSMITOK)
+            {
+                S0_Data&=~S_TRANSMITOK;
+                W5500_Send_Socket_Data(0, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
+                W5500_Send_Socket_Data(0, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
+                W5500_Send_Socket_Data(0, "ABBBBBBBBBBBBBBBBBBBCC\r\n", 24);
+                W5500_Send_Socket_Data(0, "KgggggggggggggggggggPP\r\n", 24);
+                W5500_Send_Socket_Data(0, "QERdoignsoidfjgoidodTT\r\n", 24);
+            }
         }
         W5500_Send_Delay_Counter=500;
     }
@@ -853,7 +868,7 @@ void W5500_Interrupt_Process(void)
             }
             if(j&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
             {
-                S0_Data|=S_TRANSMITOK;//端口发送一个数据包完成 
+                S0_Data|=S_TRANSMITOK;//端口发送一个数据包完成
             }
             if(j&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
             {
@@ -886,8 +901,11 @@ void W5500_Interrupt_Process(void)
 void W5500_Process_Socket_Data(SOCKET s)
 {
 	uint16_t size;
+    uint8_t* Tx_Buffer;
 	size=Read_SOCK_Data_Buffer(s, Rx_Buffer);
-	memcpy(Tx_Buffer, Rx_Buffer, size);			
-	Write_SOCK_Data_Buffer(s, Tx_Buffer, size);
+    Tx_Buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
+	memcpy(Tx_Buffer, Rx_Buffer, size);	
+	W5500_Send_Socket_Data(s, Tx_Buffer, size);
+    free(Tx_Buffer);
 }
 
