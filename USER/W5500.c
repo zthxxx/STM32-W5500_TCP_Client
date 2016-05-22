@@ -12,11 +12,11 @@ uint8_t Phy_Addr[6]={0x0C,0x29,0xAB,0x7C,0x00,0x01};	//物理地址(MAC)
 uint8_t IP_Addr[4]={192,168,169,104};	//本机IP地址 
 
 uint8_t S0_Port[2]={0x13,0x88};	//端口0的端口号(0x1388 5000) 
-uint8_t S0_DIP[4]={192,168,1,105};	//端口0目的IP地址 
-uint8_t S0_DPort[2]={0x7B,0x17};	//端口0目的端口号(0x7B17 31511) 
+uint8_t S0_Target_IP[4]={192,168,1,105};	//端口0目的IP地址 
+uint8_t S0_Target_Port[2]={0x7B,0x17};	//端口0目的端口号(0x7B17 31511) 
 
-uint8_t UDP_DIPR[4]={192,168,1,105};	//UDP(广播)模式,目的主机IP地址
-uint8_t UDP_DPORT[2]={0x7B,0x17};	//UDP(广播)模式,目的主机端口号
+uint8_t UDP_Target_IPR[4]={192,168,1,105};	//UDP(广播)模式,目的主机IP地址
+uint8_t UDP_Target_Port[2]={0x7B,0x17};	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
 uint8_t S0_Mode =TCP_CLIENT;
@@ -415,8 +415,8 @@ void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size)
 	//如果是UDP模式,可以在此设置目的主机的IP和端口号
 	if((Read_W5500_SOCK_1Byte(s,Sn_MR)&0x0f) != SOCK_UDP)//如果Socket打开失败
 	{		
-		Write_W5500_SOCK_4Byte(s, Sn_DIPR, UDP_DIPR);//设置目的主机IP  		
-		Write_W5500_SOCK_2Byte(s, Sn_DPORTR, ((uint16_t)UDP_DPORT[0]<<8)+UDP_DPORT[1]);//设置目的主机端口号				
+		Write_W5500_SOCK_4Byte(s, Sn_DIPR, UDP_Target_IPR);//设置目的主机IP  		
+		Write_W5500_SOCK_2Byte(s, Sn_DPORTR, ((uint16_t)UDP_Target_Port[0]<<8)+UDP_Target_Port[1]);//设置目的主机端口号				
 	}
 
 	offset=Read_W5500_SOCK_2Byte(s,Sn_TX_WR);
@@ -609,9 +609,9 @@ void Socket_Init(SOCKET s)
 			//设置端口0的端口号
 			Write_W5500_SOCK_2Byte(0, Sn_PORT, ((uint16_t)S0_Port[0] << 8)+S0_Port[1]);
 			//设置端口0目的(远程)端口号
-			Write_W5500_SOCK_2Byte(0, Sn_DPORTR,((uint16_t)S0_DPort[0] << 8)+S0_DPort[1]);
+			Write_W5500_SOCK_2Byte(0, Sn_DPORTR,((uint16_t)S0_Target_Port[0] << 8)+S0_Target_Port[1]);
 			//设置端口0目的(远程)IP地址
-			Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_DIP);			
+			Write_W5500_SOCK_4Byte(0, Sn_DIPR, S0_Target_IP);			
 			
 			break;
 
@@ -769,42 +769,6 @@ uint8_t Socket_UDP(SOCKET s)
 	//如果目的主机IP和目的Socket的端口号是固定的,在运行过程中没有改变,那么也可以在这里设置
 }
 
-bool W5500_Daemon_Process(void)
-{
-
-    if(W5500_Socket_Set_Default() == false)//W5500端口初始化配置
-    {
-        return false;
-    }
-    if(W5500_Interrupt)//处理W5500中断		
-    {
-        W5500_Interrupt_Process();//W5500中断处理程序框架
-    }
-    if((S0_Data & S_RECEIVE) == S_RECEIVE)//如果Socket0接收到数据
-    {
-        S0_Data&=~S_RECEIVE;
-        W5500_Process_Socket_Data(0);//W5500接收并发送接收到的数据
-    }
-    else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
-    {
-        if(S0_State == (S_INIT|S_CONN))
-        {
-            if((S0_Data & S_TRANSMITOK) == S_TRANSMITOK)
-            {
-                S0_Data&=~S_TRANSMITOK;
-                W5500_Send_Socket_Data(0, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
-                W5500_Send_Socket_Data(0, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
-                W5500_Send_Socket_Data(0, "ABBBBBBBBBBBBBBBBBBBCC\r\n", 24);
-                W5500_Send_Socket_Data(0, "KgggggggggggggggggggPP\r\n", 24);
-                W5500_Send_Socket_Data(0, "QERdoignsoidfjgoidodTT\r\n", 24);
-            }
-        }
-        W5500_Send_Delay_Counter=500;
-    }
-    return true;
-}
-
-
 /*******************************************************************************
 * 函数名  : W5500_INT_EXTI_IRQHandler
 * 描述    : W5500中断线中断服务函数(W5500 INT引脚中断服务函数)
@@ -821,8 +785,6 @@ void W5500_INT_EXTI_IRQHandler(void)
 		W5500_Interrupt=1;
 	}
 }
-
-
 
 /*******************************************************************************
 * 函数名  : W5500_Interrupt_Process
@@ -884,6 +846,41 @@ void W5500_Interrupt_Process(void)
         if(Read_W5500_1Byte(SIR) == 0) 
             break;
     }
+}
+
+bool W5500_Daemon_Process(void)
+{
+
+    if(W5500_Socket_Set_Default() == false)//W5500端口初始化配置
+    {
+        return false;
+    }
+    if(W5500_Interrupt)//处理W5500中断		
+    {
+        W5500_Interrupt_Process();//W5500中断处理程序框架
+    }
+    if((S0_Data & S_RECEIVE) == S_RECEIVE)//如果Socket0接收到数据
+    {
+        S0_Data&=~S_RECEIVE;
+        W5500_Process_Socket_Data(0);//W5500接收并发送接收到的数据
+    }
+    else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
+    {
+        if(S0_State == (S_INIT|S_CONN))
+        {
+            if((S0_Data & S_TRANSMITOK) == S_TRANSMITOK)
+            {
+                S0_Data&=~S_TRANSMITOK;
+                W5500_Send_Socket_Data(0, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
+                W5500_Send_Socket_Data(0, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
+                W5500_Send_Socket_Data(0, "ABBBBBBBBBBBBBBBBBBBCC\r\n", 24);
+                W5500_Send_Socket_Data(0, "KgggggggggggggggggggPP\r\n", 24);
+                W5500_Send_Socket_Data(0, "QERdoignsoidfjgoidodTT\r\n", 24);
+            }
+        }
+        W5500_Send_Delay_Counter=500;
+    }
+    return true;
 }
 
 

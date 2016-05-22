@@ -239,11 +239,11 @@ extern uint8_t Phy_Addr[6];	//物理地址(MAC)
 extern uint8_t IP_Addr[4];	//本机IP地址 
 
 extern uint8_t S0_Port[2];	//端口0的端口号(5000) 
-extern uint8_t S0_DIP[4];		//端口0目的IP地址 
-extern uint8_t S0_DPort[2];	//端口0目的端口号(6000) 
+extern uint8_t S0_Target_IP[4];		//端口0目的IP地址 
+extern uint8_t S0_Target_Port[2];	//端口0目的端口号(6000) 
 
-extern uint8_t UDP_DIPR[4];	//UDP(广播)模式,目的主机IP地址
-extern uint8_t UDP_DPORT[2];	//UDP(广播)模式,目的主机端口号
+extern uint8_t UDP_Target_IPR[4];	//UDP(广播)模式,目的主机IP地址
+extern uint8_t UDP_Target_Port[2];	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
 extern uint8_t S0_Mode;	//端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
@@ -269,18 +269,27 @@ void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置
 void W5500_SPI_Configuration(void);//W5500 SPI初始化配置(STM32 SPI1)
 void W5500_Hardware_Reset(void);//硬件复位W5500
-void W5500_Init(void);//初始化W5500寄存器函数
-uint8_t Detect_Gateway(void);//检查网关服务器
 void Socket_Init(SOCKET s);//指定Socket(0~7)初始化
-bool W5500_Socket_Set_Default(void);//Socket0设置为默认状态
 uint8_t Socket_Connect(SOCKET s);//设置指定Socket(0~7)为客户端与远程服务器连接
 uint8_t Socket_Listen(SOCKET s);//设置指定Socket(0~7)作为服务器等待远程主机的连接
 uint8_t Socket_UDP(SOCKET s);//设置指定Socket(0~7)为UDP模式
 uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);//指定Socket(0~7)接收数据处理
-bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
 void W5500_Send_Socket_Data(SOCKET s, uint8_t *dat_ptr, uint16_t size); //指定Socket(0~7)发送数据处理
-void W5500_Interrupt_Process(void);//W5500中断处理程序框架
 void W5500_Process_Socket_Data(SOCKET s);//W5500接收并处理接收到的数据
+
+void Write_W5500_SOCK_1Byte(SOCKET s, uint16_t reg, uint8_t dat);
+void Write_W5500_SOCK_2Byte(SOCKET s, uint16_t reg, uint16_t dat);
+void Write_W5500_SOCK_4Byte(SOCKET s, uint16_t reg, uint8_t *dat_ptr);
+uint8_t Read_W5500_SOCK_1Byte(SOCKET s, uint16_t reg);
+uint16_t Read_W5500_SOCK_2Byte(SOCKET s, uint16_t reg);
+uint16_t Read_SOCK_Data_Buffer(SOCKET s, uint8_t *dat_ptr);
+
+
+uint8_t Detect_Gateway(void);//检查网关服务器
+void W5500_Init(void);//初始化W5500寄存器函数
+bool W5500_Socket_Set_Default(void);//Socket0设置为默认状态
+bool W5500_Daemon_Process(void);//W5500的守护进程，提供监测端口状态，端口初始化，中断处理接、收处理的调用
+void W5500_Interrupt_Process(void);//W5500中断处理程序框架
 
 #endif
 
