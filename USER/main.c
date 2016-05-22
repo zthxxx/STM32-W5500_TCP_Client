@@ -26,81 +26,12 @@ void RCC_Configuration(void);		//设置系统时钟为72MHZ(这个可以根据需要改)
 void NVIC_Configuration(void);		//STM32中断向量表配配置
 void Timer2_Init_Config(void);		//Timer2初始化配置
 void System_Initialization(void);	//STM32系统初始化函数(初始化STM32时钟及外设)
-void delay_ms(unsigned int d);			//延时函数(ms)
+void delay_ms(uint32_t d);			//延时函数(ms)
 
-unsigned int Timer2_Counter=0; //Timer2定时器计数变量(ms)
-unsigned int W5500_Send_Delay_Counter=0; //W5500发送延时计数变量(ms)
+uint16_t Timer2_Counter=0; //Timer2定时器计数变量(ms)
 
-/*******************************************************************************
-* 函数名  : W5500_Initialization
-* 描述    : W5500初始货配置
-* 输入    : 无
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 无
-*******************************************************************************/
-void W5500_Initialization(void)
-{
-	W5500_Init();		//初始化W5500寄存器函数
-	Detect_Gateway();	//检查网关服务器 
-	Socket_Init(0);		//指定Socket(0~7)初始化,初始化端口0
-}
 
-/*******************************************************************************
-* 函数名  : W5500_Socket_Set
-* 描述    : W5500端口初始化配置
-* 输入    : 无
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 分别设置4个端口,根据端口工作模式,将端口置于TCP服务器、TCP客户端或UDP模式.
-*			从端口状态字节Socket_State可以判断端口的工作情况
-*******************************************************************************/
-void W5500_Socket_Set(void)
-{
-	if(S0_State==0)//端口0初始化配置
-	{
-		if(S0_Mode==TCP_SERVER)//TCP服务器模式 
-		{
-			if(Socket_Listen(0)==TRUE)
-				S0_State=S_INIT;
-			else
-				S0_State=0;
-		}
-		else if(S0_Mode==TCP_CLIENT)//TCP客户端模式 
-		{
-			if(Socket_Connect(0)==TRUE)
-				S0_State=S_INIT;
-			else
-				S0_State=0;
-		}
-		else//UDP模式 
-		{
-			if(Socket_UDP(0)==TRUE)
-				S0_State=S_INIT|S_CONN;
-			else
-				S0_State=0;
-		}
-	}
-}
 
-/*******************************************************************************
-* 函数名  : Process_Socket_Data
-* 描述    : W5500接收并发送接收到的数据
-* 输入    : s:端口号
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 本过程先调用S_rx_process()从W5500的端口接收数据缓冲区读取数据,
-*			然后将读取的数据从Rx_Buffer拷贝到Temp_Buffer缓冲区进行处理。
-*			处理完毕，将数据从Temp_Buffer拷贝到Tx_Buffer缓冲区。调用S_tx_process()
-*			发送数据。
-*******************************************************************************/
-void Process_Socket_Data(SOCKET s)
-{
-	unsigned short size;
-	size=Read_SOCK_Data_Buffer(s, Rx_Buffer);
-	memcpy(Tx_Buffer, Rx_Buffer, size);			
-	Write_SOCK_Data_Buffer(s, Tx_Buffer, size);
-}
 
 /*******************************************************************************
 * 函数名  : main
@@ -113,34 +44,10 @@ void Process_Socket_Data(SOCKET s)
 int main(void)
 {
 	System_Initialization();	//STM32系统初始化函数(初始化STM32时钟及外设)
-    printf("System start.\r\n");
-	W5500_Hardware_Reset();		//硬件复位W5500
-    printf("W5500 reset.\r\n");
-	W5500_Initialization();		//W5500初始货配置
-    printf("W5500 Init.\r\n");
+
 	while (1)
 	{
-		W5500_Socket_Set();//W5500端口初始化配置
-
-		if(W5500_Interrupt)//处理W5500中断		
-		{
-			W5500_Interrupt_Process();//W5500中断处理程序框架
-		}
-		if((S0_Data & S_RECEIVE) == S_RECEIVE)//如果Socket0接收到数据
-		{
-			S0_Data&=~S_RECEIVE;
-			Process_Socket_Data(0);//W5500接收并发送接收到的数据
-		}
-		else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
-		{
-			if(S0_State == (S_INIT|S_CONN))
-			{
-				S0_Data&=~S_TRANSMITOK;
-				memcpy(Tx_Buffer, "\r\nWelcome To YiXinElec!\r\n", 23);	
-				Write_SOCK_Data_Buffer(0, Tx_Buffer, 23);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
-			}
-			W5500_Send_Delay_Counter=500;
-		}
+		W5500_Daemon_Process();
 	}
 }
 
@@ -207,31 +114,6 @@ void RCC_Configuration(void)
   }
 }
 
-/*******************************************************************************
-* 函数名  : NVIC_Configuration
-* 描述    : STM32中断向量表配配置
-* 输入    : 无
-* 输出    : 无
-* 返回值  : 无
-* 说明    : 设置KEY1(PC11)的中断优先组
-*******************************************************************************/
-void NVIC_Configuration(void)
-{
-	NVIC_InitTypeDef NVIC_InitStructure;						//定义NVIC初始化结构体
-
-  	/* Set the Vector Table base location at 0x08000000 */
-  	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
-	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);				//设置中断优先级组为1，优先组(可设0～4位)
-	
-	NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQn;				//设置中断向量号
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;	//设置抢先优先级
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;			//设置响应优先级
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;				//使能NVIC
-	NVIC_Init(&NVIC_InitStructure);
-
-	W5500_NVIC_Configuration();	//W5500 接收引脚中断优先级设置
-}
 
 /*******************************************************************************
 * 函数名  : Timer2_Init_Config
@@ -289,22 +171,22 @@ void System_Initialization(void)
 	RCC_Configuration();		//设置系统时钟为72MHZ(这个可以根据需要改)
     NVIC_Configuration_Init();
     NVIC_IRQChannel_Configuration_Set(TIM2_IRQn,2,3,ENABLE);
-    W5500_NVIC_Configuration();
     USART1_Config(115200);
-	SPI_Configuration();		//W5500 SPI初始化配置(STM32 SPI1)
+    printf("System start.\r\n");
 	Timer2_Init_Config();		//Timer2初始化配置
-	W5500_GPIO_Configuration();	//W5500 GPIO初始化配置	
+    printf("W5500 reset.\r\n");
+    W5500_Init();
+    printf("W5500 Init.\r\n");
 }
 
-/*******************************************************************************
-* 函数名  : Delay
+/******************************************************************************** 函数名  : Delay
 * 描述    : 延时函数(ms)
 * 输入    : d:延时系数，单位为毫秒
 * 输出    : 无
 * 返回    : 无 
 * 说明    : 延时是利用Timer2定时器产生的1毫秒的计数来实现的
 *******************************************************************************/
-void delay_ms(unsigned int d)
+void delay_ms(uint32_t d)
 {
 	Timer2_Counter=d; 
 	while(Timer2_Counter != 0);
