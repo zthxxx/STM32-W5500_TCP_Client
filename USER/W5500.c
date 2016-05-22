@@ -92,14 +92,7 @@ void W5500_GPIO_Configuration(void)
 *******************************************************************************/
 void W5500_NVIC_Configuration(void)
 {
-  	NVIC_InitTypeDef NVIC_InitStructure;
-
-	/* Enable the EXTI4 Interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+    NVIC_IRQChannel_Configuration_Set(EXTI4_IRQn,1,2,ENABLE);
 }
 
 /*******************************************************************************
@@ -539,9 +532,9 @@ void Write_SOCK_Data_Buffer(SOCKET s, unsigned char *dat_ptr, unsigned short siz
 void W5500_Hardware_Reset(void)
 {
 	GPIO_ResetBits(W5500_RST_PORT, W5500_RST);//复位引脚拉低
-	Delay(50);
+	delay_ms(50);
 	GPIO_SetBits(W5500_RST_PORT, W5500_RST);//复位引脚拉高
-	Delay(200);
+	delay_ms(200);
 	while((Read_W5500_1Byte(PHYCFGR)&LINK)==0);//等待以太网连接完成
 }
 
@@ -558,7 +551,7 @@ void W5500_Init(void)
 	u8 i=0;
 
 	Write_W5500_1Byte(MR, RST);//软件复位W5500,置1有效,复位后自动清0
-	Delay(10);//延时10ms,自己定义该函数
+	delay_ms(10);//延时10ms,自己定义该函数
 
 	//设置网关(Gateway)的IP地址,Gateway_IP为4字节unsigned char数组,自己定义 
 	//使用网关可以使通信突破子网的局限，通过网关可以访问到其它子网或进入Internet
@@ -620,7 +613,7 @@ unsigned char Detect_Gateway(void)
 	Write_W5500_SOCK_4Byte(0,Sn_DIPR,ip_adde);//向目的地址寄存器写入与本机IP不同的IP值
 	Write_W5500_SOCK_1Byte(0,Sn_MR,MR_TCP);//设置socket为TCP模式
 	Write_W5500_SOCK_1Byte(0,Sn_CR,OPEN);//打开Socket	
-	Delay(5);//延时5ms 	
+	delay_ms(5);//延时5ms 	
 	
 	if(Read_W5500_SOCK_1Byte(0,Sn_SR) != SOCK_INIT)//如果socket打开失败
 	{
@@ -636,7 +629,7 @@ unsigned char Detect_Gateway(void)
 		j=Read_W5500_SOCK_1Byte(0,Sn_IR);//读取Socket0中断标志寄存器
 		if(j!=0)
 		Write_W5500_SOCK_1Byte(0,Sn_IR,j);
-		Delay(5);//延时5ms 
+		delay_ms(5);//延时5ms 
 		if((j&IR_TIMEOUT) == IR_TIMEOUT)
 		{
 			return FALSE;	
@@ -714,7 +707,7 @@ unsigned char Socket_Connect(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket
-	Delay(5);//延时5ms
+	delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
@@ -737,14 +730,14 @@ unsigned char Socket_Listen(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_TCP);//设置socket为TCP模式 
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket	
-	Delay(5);//延时5ms
+	delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_INIT)//如果socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket
 		return FALSE;//返回FALSE(0x00)
 	}	
 	Write_W5500_SOCK_1Byte(s,Sn_CR,LISTEN);//设置Socket为侦听模式	
-	Delay(5);//延时5ms
+	delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_LISTEN)//如果socket设置失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//设置不成功,关闭Socket
@@ -771,7 +764,7 @@ unsigned char Socket_UDP(SOCKET s)
 {
 	Write_W5500_SOCK_1Byte(s,Sn_MR,MR_UDP);//设置Socket为UDP模式*/
 	Write_W5500_SOCK_1Byte(s,Sn_CR,OPEN);//打开Socket*/
-	Delay(5);//延时5ms
+	delay_ms(5);//延时5ms
 	if(Read_W5500_SOCK_1Byte(s,Sn_SR)!=SOCK_UDP)//如果Socket打开失败
 	{
 		Write_W5500_SOCK_1Byte(s,Sn_CR,CLOSE);//打开不成功,关闭Socket

@@ -20,12 +20,13 @@
 #include <string.h>
 #include <stdio.h>
 #include "bsp_usart1.h"
+#include "NVIC_CONFIG.H"
 
 void RCC_Configuration(void);		//设置系统时钟为72MHZ(这个可以根据需要改)
 void NVIC_Configuration(void);		//STM32中断向量表配配置
 void Timer2_Init_Config(void);		//Timer2初始化配置
 void System_Initialization(void);	//STM32系统初始化函数(初始化STM32时钟及外设)
-void Delay(unsigned int d);			//延时函数(ms)
+void delay_ms(unsigned int d);			//延时函数(ms)
 
 unsigned int Timer2_Counter=0; //Timer2定时器计数变量(ms)
 unsigned int W5500_Send_Delay_Counter=0; //W5500发送延时计数变量(ms)
@@ -286,7 +287,9 @@ void TIM2_IRQHandler(void)
 void System_Initialization(void)
 {
 	RCC_Configuration();		//设置系统时钟为72MHZ(这个可以根据需要改)
-  	NVIC_Configuration();		//STM32中断向量表配配置
+    NVIC_Configuration_Init();
+    NVIC_IRQChannel_Configuration_Set(TIM2_IRQn,2,3,ENABLE);
+    W5500_NVIC_Configuration();
     USART1_Config(115200);
 	SPI_Configuration();		//W5500 SPI初始化配置(STM32 SPI1)
 	Timer2_Init_Config();		//Timer2初始化配置
@@ -301,7 +304,7 @@ void System_Initialization(void)
 * 返回    : 无 
 * 说明    : 延时是利用Timer2定时器产生的1毫秒的计数来实现的
 *******************************************************************************/
-void Delay(unsigned int d)
+void delay_ms(unsigned int d)
 {
 	Timer2_Counter=d; 
 	while(Timer2_Counter != 0);
