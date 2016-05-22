@@ -260,8 +260,9 @@ typedef uint8_t SOCKET;			//自定义端口号数据类型
 extern void delay_ms(uint32_t d);//延时函数(ms)
 extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
 
-#define W5500_SPI_Send_Byte       SPI1_Send_Byte
-#define W5500_SPI_Receive_Data    SPI1_Receive_Data
+#define W5500_SPI_Configuration     SPI1_Init
+#define W5500_SPI_Send_Byte         SPI1_Send_Byte
+#define W5500_SPI_Receive_Data      SPI1_Receive_Data
 
 void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置

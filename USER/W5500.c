@@ -56,7 +56,7 @@ uint16_t W5500_Send_Delay_Counter=0;
 * 返回值  : 无
 * 说明    : 无
 *******************************************************************************/
-void W5500_SPI_Configuration(void)
+void SPI1_Init(void)
 {
 	GPIO_InitTypeDef 	GPIO_InitStructure;
 	SPI_InitTypeDef   	SPI_InitStructure;	   
