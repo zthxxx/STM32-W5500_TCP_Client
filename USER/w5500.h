@@ -207,14 +207,19 @@
 #define S_TX_SIZE	2048  	/*定义Socket发送缓冲区的大小，可以根据W5500_TMSR的设置修改 */
 
 /***************----- W5500 GPIO定义 -----***************/
-#define W5500_SCS		GPIO_Pin_4	//定义W5500的CS引脚	 
-#define W5500_SCS_PORT	GPIOA
+#define W5500_SCS_PIN		        GPIO_Pin_4	//定义W5500的CS引脚	 
+#define W5500_SCS_PORT	            GPIOA
 	
-#define W5500_RST		GPIO_Pin_5	//定义W5500的RST引脚
-#define W5500_RST_PORT	GPIOC
+#define W5500_RST_PIN		        GPIO_Pin_2	//定义W5500的RST引脚
+#define W5500_RST_PORT	            GPIOC
 
-#define W5500_INT		GPIO_Pin_4	//定义W5500的INT引脚
-#define W5500_INT_PORT	GPIOC
+#define W5500_INT_PIN		        GPIO_Pin_3	//定义W5500的INT引脚
+#define W5500_INT_PORT	            GPIOC
+#define W5500_INT_SOURCE_PIN        GPIO_PinSource3
+#define W5500_INT_SOURCE_PORT       GPIO_PortSourceGPIOC
+#define W5500_INT_EXTI_LINE         EXTI_Line3
+#define W5500_INT_EXTI_IRQn         EXTI3_IRQn
+#define W5500_INT_EXTI_IRQHandler   EXTI3_IRQHandler
 
 /***************----- 网络参数变量定义 -----***************/
 extern uint8_t Gateway_IP[4];	//网关IP地址 
