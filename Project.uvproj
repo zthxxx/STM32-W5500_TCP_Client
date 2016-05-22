@@ -222,7 +222,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>0</useUlib>
+            <useUlib>1</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <RoSelD>3</RoSelD>
@@ -363,7 +363,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>.\USER;.\CMSIS;.\LIB\inc</IncludePath>
+              <IncludePath>.\USER;.\CMSIS;.\LIB\inc;.\USER\NVIC;.\USER\USART</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -420,6 +420,16 @@
               <FileName>W5500.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\W5500.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\USART\bsp_usart1.c</FilePath>
+            </File>
+            <File>
+              <FileName>NVIC_CONFIG.C</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\NVIC\NVIC_CONFIG.C</FilePath>
             </File>
           </Files>
         </Group>

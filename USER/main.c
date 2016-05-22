@@ -19,6 +19,7 @@
 #include "W5500.h"			
 #include <string.h>
 #include <stdio.h>
+#include "bsp_usart1.h"
 
 void RCC_Configuration(void);		//设置系统时钟为72MHZ(这个可以根据需要改)
 void NVIC_Configuration(void);		//STM32中断向量表配配置
@@ -111,11 +112,11 @@ void Process_Socket_Data(SOCKET s)
 int main(void)
 {
 	System_Initialization();	//STM32系统初始化函数(初始化STM32时钟及外设)
-//    printf("System start.");
+    printf("System start.\r\n");
 	W5500_Hardware_Reset();		//硬件复位W5500
-//    printf("W5500 reset.");
+    printf("W5500 reset.\r\n");
 	W5500_Initialization();		//W5500初始货配置
-//    printf("W5500 Init.");
+    printf("W5500 Init.\r\n");
 	while (1)
 	{
 		W5500_Socket_Set();//W5500端口初始化配置
@@ -286,6 +287,7 @@ void System_Initialization(void)
 {
 	RCC_Configuration();		//设置系统时钟为72MHZ(这个可以根据需要改)
   	NVIC_Configuration();		//STM32中断向量表配配置
+    USART1_Config(115200);
 	SPI_Configuration();		//W5500 SPI初始化配置(STM32 SPI1)
 	Timer2_Init_Config();		//Timer2初始化配置
 	W5500_GPIO_Configuration();	//W5500 GPIO初始化配置	
