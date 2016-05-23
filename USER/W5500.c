@@ -5,6 +5,7 @@
 **********************************************************************************/
 #include "W5500.h"	
 
+extern void delay_ms(uint32_t d);//延时函数(ms)
 
 bool W5500_Socket0_Sendding = false;
 Uint8PacketQueue W5500_Socket0_SendPacketQueue = {NULL, NULL, CreatUint8PacketNode, Free_W5500_PacketNoedItem};
@@ -40,7 +41,7 @@ Socket socket_0 = {
 uint8_t Rx_Buffer[S_RX_SIZE];	//端口接收数据缓冲区
 
 uint8_t W5500_Interrupt;	//W5500中断标志(0:无中断,1:有中断)
-uint16_t W5500_Send_Delay_Counter=0;
+
 
 
 /*******************************************************************************
@@ -412,7 +413,7 @@ void W5500_Send_Socket_Data(Socket* socket)
         uint8PacketNodePointer = Uint8PacketQueuePop(socket->send_Packet_Queue_Handle);
         packet = uint8PacketNodePointer->packet;
         packetLength = uint8PacketNodePointer->packetLength;
-        
+        socket->packet_Sendding = true;
         //如果是UDP模式,可以在此设置目的主机的IP和端口号
         if((Read_W5500_SOCK_1Byte(socket->socket_index,Sn_MR)&0x0f) != SOCK_UDP)//如果Socket打开失败
         {		
@@ -425,8 +426,6 @@ void W5500_Send_Socket_Data(Socket* socket)
         offset&=(S_TX_SIZE-1);//计算实际的物理地址
 
         W5500_SCS_Low();//置W5500的SCS为低电平
-        
-        socket->packet_Sendding = true;
 
         W5500_SPI_Send_Short(offset);//写16位地址
         W5500_SPI_Send_Byte(VDM|RWB_WRITE|(socket->socket_index*0x20+0x10));//写控制字节,N个字节数据长度,写数据,选择端口s的寄存器
@@ -463,6 +462,10 @@ void W5500_Send_Socket_Data(Socket* socket)
         Write_W5500_SOCK_2Byte(socket->socket_index, Sn_TX_WR, offset1);
         Write_W5500_SOCK_1Byte(socket->socket_index, Sn_CR, SEND);//发送启动发送命令
         socket->send_Packet_Queue_Handle->FreePacketNoedItem(uint8PacketNodePointer);
+    }
+    else
+    {
+        socket->packet_Sendding = false;
     }
 }
 
@@ -866,11 +869,6 @@ void W5500_Interrupt_Process(void)
             if(IRQ_sign&IR_SEND_OK)//Socket0数据发送完成,可以再次启动S_tx_process()函数发送数据 
             {
                 socket->send_receive_State|=S_TRANSMITOK;//端口发送一个数据包完成
-                socket->packet_Sendding = false;
-                if(socket->send_Packet_Queue_Handle->head)
-                {
-                    W5500_Send_Socket_Data(socket);
-                }
             }
             if(IRQ_sign&IR_RECV)//Socket接收到数据,可以启动S_rx_process()函数 
             {
@@ -903,25 +901,24 @@ bool W5500_Daemon_Process(void)
         socket->send_receive_State&=~S_RECEIVE;
         W5500_Socket_Receive_Process(socket);//W5500接收并发送接收到的数据
     }
-    else if(W5500_Send_Delay_Counter <= 0)//定时发送字符串
+    if(socket->port_State == (S_INIT|S_CONN))
     {
-        if(socket->port_State == (S_INIT|S_CONN))
+        if((socket->send_receive_State & S_TRANSMITOK) == S_TRANSMITOK)
         {
-            if((socket->send_receive_State & S_TRANSMITOK) == S_TRANSMITOK)
+            socket->send_receive_State&=~S_TRANSMITOK;
+            if(socket->send_Packet_Queue_Handle->head)
             {
-                socket->send_receive_State&=~S_TRANSMITOK;
-//                W5500_Send_Socket_Data(socket, "Hello W5500 is run!\r\n", 21);//指定Socket(0~7)发送数据处理,端口0发送23字节数据
-//                W5500_Send_Socket_Data(socket, " Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
-//                W5500_Send_Socket_Data(socket, "ABBB1234BB345634BBBBCC\r\n", 24);
-//                W5500_Send_Socket_Data(socket, "Kggggg5678ggggggggggPP\r\n", 24);
-//                W5500_Send_Socket_Data(socket, "QERdoig-----+++oidodTT\r\n", 24);
+                W5500_Send_Socket_Data(socket);
+            }
+            else
+            {
+                socket->packet_Sendding = false;
             }
         }
-        W5500_Send_Delay_Counter=500;
     }
+ 
     return true;
 }
-
 
 /*******************************************************************************
 * 函数名  : W5500_Socket_Receive_Process
@@ -940,7 +937,8 @@ void W5500_Socket_Receive_Process(Socket* socket)
     uint8_t* Tx_Buffer;
 	size=Read_SOCK_Data_Buffer(socket, Rx_Buffer);
     Tx_Buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
-	memcpy(Tx_Buffer, Rx_Buffer, size);	
+	memcpy(Tx_Buffer, Rx_Buffer, size);
+    Uint8PacketQueuePushStreamData(socket->send_Packet_Queue_Handle, Tx_Buffer, size);
 	W5500_Send_Socket_Data(socket);
     free(Tx_Buffer);
 }

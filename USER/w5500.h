@@ -210,8 +210,7 @@
 #define S_RX_SIZE	2048	/*定义Socket接收缓冲区的大小，可以根据W5500_RMSR的设置修改 */
 #define S_TX_SIZE	2048  	/*定义Socket发送缓冲区的大小，可以根据W5500_TMSR的设置修改 */
 
-extern void delay_ms(uint32_t d);//延时函数(ms)
-extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
+
 
 /***************----- W5500 GPIO定义 -----***************/
 
@@ -234,18 +233,6 @@ extern uint16_t W5500_Send_Delay_Counter; //W5500发送延时计数变量(ms)
 #define W5500_SPI_Receive_Data      SPI3_Receive_Data
 #define W5500_Delay_ms              delay_ms
 
-/***************----- 网络参数变量定义 -----***************/
-extern uint8_t Gateway_IP[4];	//网关IP地址 
-extern uint8_t Sub_Mask[4];	//子网掩码 
-extern uint8_t Phy_Addr[6];	//物理地址(MAC) 
-extern uint8_t IP_Addr[4];	//本机IP地址 
-
-extern uint8_t S0_Port[2];	//端口0的端口号(5000) 
-extern uint8_t S0_Target_IP[4];		//端口0目的IP地址 
-extern uint8_t S0_Target_Port[2];	//端口0目的端口号(6000) 
-
-extern uint8_t UDP_Target_IPR[4];	//UDP(广播)模式,目的主机IP地址
-extern uint8_t UDP_Target_Port[2];	//UDP(广播)模式,目的主机端口号
 
 /***************----- 端口的运行模式 -----***************/
 //端口0的运行模式,0:TCP服务器模式,1:TCP客户端模式,2:UDP(广播)模式
@@ -266,19 +253,18 @@ extern uint8_t UDP_Target_Port[2];	//UDP(广播)模式,目的主机端口号
 
 typedef struct Socket
 {
-    uint8_t socket_index;
-    uint8_t* local_IP;
-    uint16_t local_Port;
-    uint8_t* target_IP;
-    uint16_t target_Port;
+    uint8_t socket_index;//Socket端口号
+    uint8_t* local_IP;//本机IP地址，这里写指针是方便链接，本质是长度为4的数组
+    uint16_t local_Port;//本机端口号
+    uint8_t* target_IP;//目标IP地址
+    uint16_t target_Port;//目标端口号
     uint8_t socket_Mode;//端口的运行模, 00H:TCP服务器模式, 01H:TCP客户端模式, 02H:UDP(广播)模式
     uint8_t port_State;//端口状态记录, 01H:端口完成初始化, 02H端口完成连接(可以正常传输数据) 
     uint8_t send_receive_State;//端口接收和发送数据的状态, 01H:端口接收到数据, 02H:端口发送数据完成
-    Uint8PacketQueue* send_Packet_Queue_Handle;
-    bool packet_Sendding;
+    Uint8PacketQueue* send_Packet_Queue_Handle;//发送缓存队列
+    bool packet_Sendding;//队列是否正在发送
 } Socket;
 
-extern Socket socket_0;
 
 void W5500_GPIO_Configuration(void);//W5500 GPIO初始化配置
 void W5500_NVIC_Configuration(void);//W5500 接收引脚中断优先级设置

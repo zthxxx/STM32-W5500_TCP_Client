@@ -31,7 +31,7 @@ void System_Initialization(void);	//STM32系统初始化函数(初始化STM32时钟及外设)
 void delay_ms(uint32_t d);			//延时函数(ms)
 
 uint16_t Timer2_Counter=0; //Timer2定时器计数变量(ms)
-
+uint16_t W5500_Send_Delay_Counter=0;//W5500发送延时计数变量(ms)
 
 
 
@@ -50,6 +50,15 @@ int main(void)
 	while (1)
 	{
 		W5500_Daemon_Process();
+        if(W5500_Send_Delay_Counter <= 0)
+        {
+            W5500_Push_Socket0_SendDataIntoFIFO("Hello W5500 is run!\r\n", 21);
+            W5500_Push_Socket0_SendDataIntoFIFO(" Love Live Rewrite Fate/Zreo Angel Beats!\r\n", 43);
+            W5500_Push_Socket0_SendDataIntoFIFO("ABBB1234BB345634BBBBCC\r\n", 24);
+            W5500_Push_Socket0_SendDataIntoFIFO("Kggggg5678ggggggggggPP\r\n", 24);
+            W5500_Push_Socket0_SendDataIntoFIFO("TianTianTianMaoMaoMaoMao\r\n", 26);
+            W5500_Send_Delay_Counter = 500;
+        }
 	}
 }
 
